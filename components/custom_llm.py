@@ -1,5 +1,6 @@
 import os
-from typing import Any, List, Mapping, Optional
+from components.helpers import prompt_format
+from typing import Any, List, Mapping, Optional, ClassVar
 from langchain.callbacks.manager import CallbackManagerForLLMRun
 from langchain_core.language_models.llms import LLM
 from openai import OpenAI
@@ -7,15 +8,15 @@ from openai import OpenAI
 
 class localLlama(LLM):
 
-    model_name = "synogate/llama3"
+    model_name: ClassVar[str] = "inet/llama3"
     client: Any = None
-    first_call = True
+    first_call: bool = True
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         # Initialize the client. We're using the OpenAI API here but redirecting to a local server.
-        self.client = OpenAI(base_url="http://s.synogate.com:8080/v1", api_key="sk-xxx")
+        self.client = OpenAI(base_url="http://127.0.0.1:8080", api_key="sk-xxx")
 
     @property
     def _llm_type(self) -> str:
@@ -33,7 +34,7 @@ class localLlama(LLM):
         prompt, self.first_call = prompt_format(prompt, self.first_call)
 
         response = self.client.completions.create(
-            model=self.model_name,
+            model="llama3",
             prompt=prompt,
             max_tokens=100,
             top_p=1,
