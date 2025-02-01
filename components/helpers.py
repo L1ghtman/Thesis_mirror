@@ -16,6 +16,7 @@ def prompt_format(prompt: str, first_call: bool) -> Tuple[str, bool]:
     if first_call:
         first_call = False
         # TODO: insert '\n\n' into tokens itself
-        return (f"{BOS}{SH}system{EH}\n\n{SP}{EOT}{SH}user{EH}\n\n{prompt}{EOT}{SH}assistant{EH}\n\n", first_call)
+        # return (f"{BOS}{SH}system{EH}\n\n{SP}{EOT}{SH}user{EH}\n\n{prompt}{EOT}{SH}assistant{EH}\n\n", first_call)
+        return (f"{SH}system{EH}\n\n{SP}{EOT}{SH}user{EH}\n\n{prompt}{EOT}{SH}assistant{EH}\n\n", first_call)
     else:
         return (f"{prompt}{EOT}{SH}assistant{EH}\n\n", first_call)
