@@ -50,39 +50,32 @@ class localLlama(LLM):
         # print("response:", response)
         # return response 
 
-    # def _stream(
-    #     self,
-    #     prompt: str,
-    #     stop: Optional[List[str]] = None,
-    #     run_manager: Optional[CallbackManagerForLLMRun] = None,
-    #     **kwargs: Any,
-    # ) -> Iterator[GenerationChunk]:
-    #     """
-    #     Stream the LLM on the given prompt.
-    #     """
+    def _stream(
+        self,
+        prompt: str,
+        stop: Optional[List[str]] = None,
+        run_manager: Optional[CallbackManagerForLLMRun] = None,
+        **kwargs: Any,
+    ) -> Iterator[GenerationChunk]:
+        """
+        Stream the LLM on the given prompt.
+        """
 
-    #     prompt, self.first_call = prompt_format(prompt, self.first_call)
+        prompt, self.first_call = prompt_format(prompt, self.first_call)
 
-    #     response = self.client.completions.create(
-    #         model="llama3",
-    #         prompt=prompt,
-    #         max_tokens=100,
-    #         top_p=1,
-    #         frequency_penalty=0.0,
-    #         presence_penalty=0.0,
-    #         stop=stop
-    #         stream=True
-    #     )
+        response = self.client.completions.create(
+            model="llama3",
+            prompt=prompt,
+            max_tokens=1000,
+            top_p=1,
+            frequency_penalty=0.0,
+            presence_penalty=0.0,
+            stop=stop,
+            stream=True
+        )
 
-    #     for chunk in response:
-    #         if hasattr(chunk.choices[0], "text"):
-    #             token = chunk.choices[0].text
-    #         else:
-    #             token = chunk.choices[0].model_extra.get("content", "")
-
-    #         chunk = GenerationChunk(text=token)
-
-    #         if run_manager:
-    #             run_manager.on_llm_new_token(token, chunk=chunk)
-
-    #         yield chunk
+        for chunk in response:
+            token = chunk.content
+            chunk = GenerationChunk(text=token)
+            
+            yield chunk
