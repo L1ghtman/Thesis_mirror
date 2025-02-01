@@ -16,6 +16,9 @@ Cohere.cohere_api_key = os.getenv("COHERE_API_KEY")
 
 
 def run_llm():
+
+    # TODO: insert custom llm wrapper here to redirect to llm server
+
     cache.init(
         pre_embedding_func=get_prompt,
     )

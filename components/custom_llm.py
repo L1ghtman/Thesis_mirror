@@ -1,8 +1,9 @@
 import os
 from components.helpers import prompt_format
-from typing import Any, List, Mapping, Optional, ClassVar
+from typing import Any, List, Mapping, Optional, ClassVar, Iterator
 from langchain.callbacks.manager import CallbackManagerForLLMRun
 from langchain_core.language_models.llms import LLM
+from langchain_core.outputs import GenerationChunk
 from openai import OpenAI
 
 
@@ -11,7 +12,7 @@ class localLlama(LLM):
     model_name: ClassVar[str] = "inet/llama3"
     client: Any = None
     first_call: bool = True
-
+    
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -25,7 +26,7 @@ class localLlama(LLM):
     def _call(
         self,
         prompt: str,
-        stop=["\n"],
+        stop: Optional[List[str]] = None,
         run_manager: Optional[CallbackManagerForLLMRun] = None,
     ) -> str:
         """
@@ -36,12 +37,52 @@ class localLlama(LLM):
         response = self.client.completions.create(
             model="llama3",
             prompt=prompt,
-            max_tokens=100,
+            max_tokens=1000,
             top_p=1,
             frequency_penalty=0.0,
             presence_penalty=0.0,
             stop=stop
         )
 
+        print("response:", response)
         result = response.model_extra["content"]
         return result
+        # print("response:", response)
+        # return response 
+
+    # def _stream(
+    #     self,
+    #     prompt: str,
+    #     stop: Optional[List[str]] = None,
+    #     run_manager: Optional[CallbackManagerForLLMRun] = None,
+    #     **kwargs: Any,
+    # ) -> Iterator[GenerationChunk]:
+    #     """
+    #     Stream the LLM on the given prompt.
+    #     """
+
+    #     prompt, self.first_call = prompt_format(prompt, self.first_call)
+
+    #     response = self.client.completions.create(
+    #         model="llama3",
+    #         prompt=prompt,
+    #         max_tokens=100,
+    #         top_p=1,
+    #         frequency_penalty=0.0,
+    #         presence_penalty=0.0,
+    #         stop=stop
+    #         stream=True
+    #     )
+
+    #     for chunk in response:
+    #         if hasattr(chunk.choices[0], "text"):
+    #             token = chunk.choices[0].text
+    #         else:
+    #             token = chunk.choices[0].model_extra.get("content", "")
+
+    #         chunk = GenerationChunk(text=token)
+
+    #         if run_manager:
+    #             run_manager.on_llm_new_token(token, chunk=chunk)
+
+    #         yield chunk
