@@ -1,5 +1,5 @@
 import time
-import helpers, custom_llm
+from components import helpers, custom_llm
 
 from gptcache.adapter.api import init_similar_cache
 from gptcache.processor.pre import last_content
@@ -9,10 +9,10 @@ init_similar_cache(pre_func=last_content)
 llm = custom_llm.localLlama()
 
 questions = [
-    "Please expalin what github is. For testing purposes, end your response with the word 'end'.",
-    #"can you explain what GitHub is",
-    #"can you tell me more about GitHub",
-    #"what is the purpose of GitHub",
+    "What is github?",
+    "can you explain what GitHub is",
+    "can you tell me more about GitHub",
+    "what is the purpose of GitHub",
 ]
 
 for question in questions:

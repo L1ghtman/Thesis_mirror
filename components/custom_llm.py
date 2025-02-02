@@ -44,11 +44,9 @@ class localLlama(LLM):
             stop=stop
         )
 
-        print("response:", response)
+        # print("response:", response)
         result = response.model_extra["content"]
         return result
-        # print("response:", response)
-        # return response 
 
     def _stream(
         self,
