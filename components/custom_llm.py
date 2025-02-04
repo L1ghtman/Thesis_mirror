@@ -53,7 +53,6 @@ class localLlama(LLM):
         prompt: str,
         stop: Optional[List[str]] = None,
         run_manager: Optional[CallbackManagerForLLMRun] = None,
-        **kwargs: Any,
     ) -> Iterator[GenerationChunk]:
         """
         Stream the LLM on the given prompt.
