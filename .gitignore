@@ -1,0 +1,6 @@
+api_cache/
+components/__pycache__/
+data_map.txt
+faiss.index
+sqlite.db
+test.json
