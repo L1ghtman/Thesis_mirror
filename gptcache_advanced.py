@@ -1,20 +1,28 @@
 import time
+import logging
 from components import helpers, custom_llm
 
 from gptcache.core import cache, Cache
 from gptcache.adapter.api import init_similar_cache
 from gptcache.processor.pre import last_content, get_prompt
-from gptcache.manager import get_data_manager
 from gptcache.manager import CacheBase, VectorBase
 from gptcache.similarity_evaluation import SearchDistanceEvaluation
 from gptcache.adapter.langchain_models import LangChainLLMs
 from gptcache.embedding import SBERT
+from gptcache.similarity_evaluation import SbertCrossencoderEvaluation
+from gptcache.manager import get_data_manager
 
+logging.basicConfig(level=logging.DEBUG)
+
+evaluation = SbertCrossencoderEvaluation()
 
 data_manager = get_data_manager(CacheBase("sqlite"), VectorBase("faiss", dimension=128))
 
 llm = custom_llm.localLlama()
-sbert = SBERT()
+encoder = SBERT('all-MiniLM-L6-v2')
+
+def embedding_func(prompt, extra_param=None):
+    return encoder.to_embeddings(prompt)
 
 # cache.init(
 #     embedding_func=sbert,
@@ -32,7 +40,10 @@ questions = [
 
 llm_cache = Cache()
 llm_cache.init(
-    pre_embedding_func=get_prompt
+    pre_embedding_func=get_prompt,
+    embedding_func=embedding_func,
+    #data_manager=data_manager,
+    similarity_evaluation=evaluation,
 )
 
 cached_llm = LangChainLLMs(llm=llm)
