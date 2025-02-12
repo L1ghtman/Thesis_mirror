@@ -10,7 +10,14 @@ def get_embeddings():
         "Today is a sunny day"
     ]
 
-    sentence_embeddings = model.encode(sentences)
+    questions = [
+        "What is github? Explain briefly.",
+        "can you explain what GitHub is? Explain briefly.",
+        "can you tell me more about GitHub? Explain briefly.",
+        "what is the purpose of GitHub? Explain briefly.",
+    ]
+
+    sentence_embeddings = model.encode(questions)
 
     similarities = model.similarity(sentence_embeddings, sentence_embeddings)
     print("Similarities:")
