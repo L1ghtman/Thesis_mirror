@@ -4,3 +4,4 @@ data_map.txt
 faiss.index
 sqlite.db
 test.json
+.vscode/
