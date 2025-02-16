@@ -39,11 +39,19 @@ def main():
 
     #onnx = Onnx()
 
-    #data_manager = get_data_manager(CacheBase("sqlite"), VectorBase("faiss", dimension=384))
-    data_manager = manager_factory("sqlite,faiss", data_dir="./workspace", vector_params={"dimension": 384})
+    #data_manager = get_data_manager(CacheBase("sqlite"), VectorBase("faiss", dimension=128))
+    #data_manager = manager_factory("sqlite,faiss", data_dir="./workspace", vector_params={"dimension": 384})
     #data_manager = get_data_manager(CacheBase("sqlite"), VectorBase("faiss", dimension=128))
     #data_manager = get_data_manager("data_map.txt", 1000)
     #data_manager = get_data_manager(CacheBase("mysql"), VectorBase("milvus", dimension=128), max_size=100, eviction='LRU')
+
+    #from gptcache import Cache
+
+    d = 384
+
+    cache_base = CacheBase("sqlite")
+    vector_base = VectorBase("faiss", dimension=d)
+    data_manager = get_data_manager(cache_base, vector_base)
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 # LLM
@@ -57,6 +65,7 @@ def main():
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 
     questions = [
+        "What is github? Explain briefly.",
         "What is github? Explain briefly.",
         #"can you explain what GitHub is? Explain briefly.",
         #"can you tell me more about GitHub? Explain briefly.",
