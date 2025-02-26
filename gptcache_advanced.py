@@ -13,6 +13,7 @@ import traceback
 
 import faiss
 
+from gptcache import Config
 from gptcache.core import Cache
 from gptcache.processor.pre import get_prompt
 from gptcache.manager import CacheBase, VectorBase
@@ -84,10 +85,13 @@ def main():
 
         questions = [
             "What is github? Explain briefly.",
-            "What is github? Explain briefly.",
             "can you explain what GitHub is? Explain briefly.",
             "can you tell me more about GitHub? Explain briefly.",
             "what is the purpose of GitHub? Explain briefly.",
+            "Hello",
+            "Give me a short summary of simulated annealing",
+            "What is git cherry pick",
+            "Give me a name suggestion for my dog, he likes peanut butter"
         ]
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
@@ -101,6 +105,8 @@ def main():
             data_manager=data_manager,
             similarity_evaluation=evaluation,
         )
+
+        llm_cache.config = Config(similarity_threshold=0.1)
 
         cached_llm = LangChainLLMs(llm=llm)
 
