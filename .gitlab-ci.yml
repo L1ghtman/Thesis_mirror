@@ -2,20 +2,26 @@ mirror_to_github:
   stage: deploy
   image: alpine:latest
   variables:
-    GIT_STRATEGY: clone  # Changed from 'none' to ensure repository access
+    GIT_STRATEGY: clone
   only:
-    - main  # Change this to your default branch if different
+    - main
   before_script:
     - apk update && apk add git openssh-client
-    - mkdir -p ~/.ssh
-    - echo "${SSH_PRIVATE_KEY}" > ~/.ssh/id_rsa
-    - chmod 600 ~/.ssh/id_rsa
-    - ssh-keyscan github.com >> ~/.ssh/known_hosts
     - git config --global user.name "${GITLAB_USER_NAME}"
     - git config --global user.email "${GITLAB_USER_EMAIL}"
   script:
-    # Instead of cloning with CI_JOB_TOKEN, use the checked-out repository
-    - cd $CI_PROJECT_DIR
+    # Set up GitHub remote
     - git remote add github https://${GITHUB_USERNAME}:${GITHUB_TOKEN}@github.com/${GITHUB_USERNAME}/${GITHUB_REPO}.git
-    - git push --mirror github
-    - echo "Successfully mirrored repository to GitHub"
+    
+    # Create actual local branches for each remote branch
+    - for branch in $(git branch -r | grep -v '\->'); do
+    -   branch_name=$(echo $branch | sed 's/origin\///')
+    -   git checkout -b $branch_name $branch
+    - done
+    
+    # Push all branches to GitHub
+    - git push github --all
+    - git push github --tags
+    
+    # Verify push
+    - echo "Successfully pushed to GitHub"
