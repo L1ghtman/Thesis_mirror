@@ -5,12 +5,11 @@ mirror_to_github:
     GIT_STRATEGY: none
   only:
     - main  # Change this to your default branch if different
-    - tags  # Optional: also mirror when you create tags
   before_script:
     - apk update && apk add git openssh-client
     - mkdir -p ~/.ssh
-    - echo "${SSH_PRIVATE_KEY}" > ~/.ssh/id_rsa
-    - chmod 600 ~/.ssh/id_rsa
+    - echo "${SSH_PRIVATE_KEY}" > ~/.ssh/mbpm4
+    - chmod 600 ~/.ssh/mpbm4
     - ssh-keyscan github.com >> ~/.ssh/known_hosts
     - git config --global user.name "${GITLAB_USER_NAME}"
     - git config --global user.email "${GITLAB_USER_EMAIL}"
