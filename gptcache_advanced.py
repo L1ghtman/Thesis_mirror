@@ -1,57 +1,173 @@
+import os
+os.environ['OBJC_DISABLE_INITIALIZE_FORK_SAFETY'] = 'YES'
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
+import warnings
+warnings.filterwarnings("ignore", message="The method `BaseLLM.__call__` was deprecated")
+
 import time
 import logging
-from components import helpers, custom_llm
+from components import helpers, custom_llm, custom_sim_eval
+import sys
+import traceback
 
-from gptcache.core import cache, Cache
-from gptcache.adapter.api import init_similar_cache
-from gptcache.processor.pre import last_content, get_prompt
+import faiss
+
+from gptcache import Config
+from gptcache.core import Cache
+from gptcache.processor.pre import get_prompt
 from gptcache.manager import CacheBase, VectorBase
-from gptcache.similarity_evaluation import SearchDistanceEvaluation
 from gptcache.adapter.langchain_models import LangChainLLMs
 from gptcache.embedding import SBERT
 from gptcache.similarity_evaluation import SbertCrossencoderEvaluation
 from gptcache.manager import get_data_manager
 
-logging.basicConfig(level=logging.DEBUG)
-
-evaluation = SbertCrossencoderEvaluation()
-
-data_manager = get_data_manager(CacheBase("sqlite"), VectorBase("faiss", dimension=128))
-
-llm = custom_llm.localLlama()
-encoder = SBERT('all-MiniLM-L6-v2')
-
-def embedding_func(prompt, extra_param=None):
-    return tuple(encoder.to_embeddings(prompt))
-
-# cache.init(
-#     embedding_func=sbert,
-#     data_manager=data_manager,
-#     similarity_evaluation=SearchDistanceEvaluation(),
-#     pre_embedding_func=get_prompt
-# )
-
-questions = [
-    "What is github? Explain briefly.",
-    "can you explain what GitHub is? Explain briefly.",
-    "can you tell me more about GitHub? Explain briefly.",
-    "what is the purpose of GitHub? Explain briefly.",
-]
-
-llm_cache = Cache()
-llm_cache.init(
-    pre_embedding_func=get_prompt,
-    embedding_func=embedding_func,
-    similarity_evaluation=evaluation,
+# Configure logging to show full details
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    stream=sys.stdout
 )
 
-cached_llm = LangChainLLMs(llm=llm)
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
+# Embedding
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 
-for question in questions:
-    start_time = time.time()
-    answer = cached_llm(prompt=question, cache_obj=llm_cache)
-    print(f"Question: {question}")
-    print("Time consuming: {:.2f}s".format(time.time() - start_time))
-    print(f"Answer: {answer}\n")
-    # print this line in blue color
-    print("\033[94m" + "-----------------------------------------------------------" + "\033[0m\n")
+def embedding_func(prompt, extra_param=None):
+    encoder = SBERT('all-MiniLM-L6-v2')
+    embedding = encoder.to_embeddings(prompt)
+    #print(f"Embedding dimension: {len(embedding)}")
+    return tuple(embedding)
+
+def main():
+    try:
+        logging.basicConfig(
+            level=logging.DEBUG,
+            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+            stream=sys.stdout
+        )
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
+# Evaluation
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
+
+        evaluation = SbertCrossencoderEvaluation()
+        #evaluation = custom_sim_eval.CustomSimilarityEvaluation()
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
+# Data Manager
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
+
+        vector_params = {
+            "dimension": 384,
+            "index_type": "IDMap,Flat",
+            "metric_type": faiss.METRIC_L2,
+        }
+
+        cache_base = CacheBase("sqlite")
+        vector_base = VectorBase("faiss", **vector_params)
+        data_manager = get_data_manager(cache_base, vector_base)
+
+        if hasattr(data_manager.v, '_index') and data_manager.v._index is not None:
+            #print("Got here!!!! ------------------------------------")
+            data_manager.v._index = faiss.index_factory(vector_params["dimension"], vector_params["index_type"])
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
+# LLM
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
+
+        llm = custom_llm.localLlama()
+
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
+# Questions
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
+
+        questions = [
+            "What is github? Explain briefly.",
+            "can you explain what GitHub is? Explain briefly.",
+            "can you tell me more about GitHub? Explain briefly.",
+            "what is the purpose of GitHub? Explain briefly.",
+            "Hello",
+            "Give me a short summary of simulated annealing",
+            "What is git cherry pick",
+            "Give me a name suggestion for my dog, he likes peanut butter"
+        ]
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
+# Cache initialization
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
+
+        llm_cache = Cache()
+        llm_cache.init(
+            pre_embedding_func=get_prompt,
+            embedding_func=embedding_func,
+            data_manager=data_manager,
+            similarity_evaluation=evaluation,
+        )
+
+        llm_cache.config = Config(similarity_threshold=0.1)
+
+        cached_llm = LangChainLLMs(llm=llm)
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
+# Run LLM with cache
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
+        try:
+            for question in questions:
+                start_time = time.time()
+                answer = cached_llm(prompt=question, cache_obj=llm_cache)
+                print(f"Question: {question}")
+                print("Time consuming: {:.2f}s".format(time.time() - start_time))
+                print(f"Answer: {answer}\n")
+                # print this line in blue color
+                print("\033[94m" + "-----------------------------------------------------------" + "\033[0m\n")
+        finally:
+            # Explicit cleanup in safe order
+            llm_cache.flush()
+            
+            # Safely cleanup FAISS index
+            try:
+                if hasattr(data_manager, 'v'):
+                    logging.debug("Debug: data_manager.v exists")
+                    logging.debug(f"Debug: data_manager.v attributes: {dir(data_manager.v)}")
+                    logging.debug(f"Debug: data_manager.v type: {type(data_manager.v)}")
+                    
+                    # Try to access _index and log the result
+                    try:
+                        index = getattr(data_manager.v, '_index', None)
+                        logging.debug(f"Debug: _index value: {index}")
+                    except Exception as index_error:
+                        logging.error(f"Error accessing _index: {index_error}")
+                        logging.error(traceback.format_exc())
+                    
+                    if hasattr(data_manager.v, '_index') and data_manager.v._index is not None:
+                        logging.debug("Debug: _index exists and is not None")
+                        if hasattr(data_manager.v, '_index_file_path'):
+                            logging.debug(f"Debug: _index_file_path exists: {data_manager.v._index_file_path}")
+                            faiss.write_index(data_manager.v._index, data_manager.v._index_file_path)
+                        data_manager.v._index.reset()
+                        #del data_manager.v._index
+            except Exception as e:
+                logging.error(f"Warning during FAISS cleanup: {str(e)}")
+                logging.error("Full traceback:")
+                logging.error(traceback.format_exc())
+            
+            # Clean up remaining objects
+            try:
+                del vector_base
+                del data_manager
+            except Exception as e:
+                logging.error(f"Warning during final cleanup: {str(e)}")
+                logging.error("Full traceback:")
+                logging.error(traceback.format_exc())
+
+    except Exception as e:
+        logging.error(f"Error in main: {str(e)}")
+        logging.error("Full traceback:")
+        logging.error(traceback.format_exc())
+
+if __name__ == "__main__":
+    import multiprocessing
+    multiprocessing.set_start_method('spawn')
+    main()
