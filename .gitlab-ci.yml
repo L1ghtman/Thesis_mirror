@@ -2,20 +2,20 @@ mirror_to_github:
   stage: deploy
   image: alpine:latest
   variables:
-    GIT_STRATEGY: none
+    GIT_STRATEGY: clone  # Changed from 'none' to ensure repository access
   only:
     - main  # Change this to your default branch if different
   before_script:
     - apk update && apk add git openssh-client
     - mkdir -p ~/.ssh
-    - echo "${SSH_PRIVATE_KEY}" > ~/.ssh/mbpm4
-    - chmod 600 ~/.ssh/mpbm4
+    - echo "${SSH_PRIVATE_KEY}" > ~/.ssh/id_rsa
+    - chmod 600 ~/.ssh/id_rsa
     - ssh-keyscan github.com >> ~/.ssh/known_hosts
     - git config --global user.name "${GITLAB_USER_NAME}"
     - git config --global user.email "${GITLAB_USER_EMAIL}"
   script:
-    - git clone --mirror https://oauth2:${CI_JOB_TOKEN}@gitlab.com/${CI_PROJECT_PATH}.git Thesis-mirror
-    - cd Thesis-mirror
+    # Instead of cloning with CI_JOB_TOKEN, use the checked-out repository
+    - cd $CI_PROJECT_DIR
     - git remote add github https://${GITHUB_USERNAME}:${GITHUB_TOKEN}@github.com/${GITHUB_USERNAME}/${GITHUB_REPO}.git
     - git push --mirror github
     - echo "Successfully mirrored repository to GitHub"
