@@ -15,8 +15,8 @@ mirror_to_github:
     - git config --global user.name "${GITLAB_USER_NAME}"
     - git config --global user.email "${GITLAB_USER_EMAIL}"
   script:
-    - git clone --mirror https://oauth2:${CI_JOB_TOKEN}@gitlab.com/${CI_PROJECT_PATH}.git repo-mirror
-    - cd repo-mirror
+    - git clone --mirror https://oauth2:${CI_JOB_TOKEN}@gitlab.com/${CI_PROJECT_PATH}.git Thesis-mirror
+    - cd Thesis-mirror
     - git remote add github https://${GITHUB_USERNAME}:${GITHUB_TOKEN}@github.com/${GITHUB_USERNAME}/${GITHUB_REPO}.git
     - git push --mirror github
     - echo "Successfully mirrored repository to GitHub"
