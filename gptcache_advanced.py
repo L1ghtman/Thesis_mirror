@@ -42,7 +42,6 @@ llm_cache = Cache()
 llm_cache.init(
     pre_embedding_func=get_prompt,
     embedding_func=embedding_func,
-    #data_manager=data_manager,
     similarity_evaluation=evaluation,
 )
 
