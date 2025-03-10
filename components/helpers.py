@@ -1,3 +1,6 @@
+import time
+
+from datetime import datetime
 from typing import Tuple
 
 # Llama-3 prompt tokens
@@ -20,3 +23,61 @@ def prompt_format(prompt: str, first_call: bool) -> Tuple[str, bool]:
         return (f"{SH}system{EH}\n\n{SP}{EOT}{SH}user{EH}\n\n{prompt}{EOT}{SH}assistant{EH}\n\n", first_call)
     else:
         return (f"{prompt}{EOT}{SH}assistant{EH}\n\n", first_call)
+    
+def convert_gptcache_report(cache_obj, log_dir="cache_logs"):
+    """Convert GPTCache report to format compatible with cache_analyzer"""
+    report = cache_obj.report
+    
+    # Basic metrics from the report
+    metrics = {
+        "start_time": datetime.now().isoformat(),
+        "total_requests": report.op_pre.count,
+        "cache_hits": report.hint_cache_count,
+        "cache_misses": report.op_llm.count,
+        "positive_hits": report.hint_cache_count,  # Simplified assumption
+        "negative_hits": 0,  # GPTCache doesn't track this directly
+        "llm_direct_calls": 0,  # Would need custom tracking
+        "cache_response_times": [],
+        "llm_response_times": [],
+        "requests": []  # This needs request-level data that GPTCache doesn't track
+    }
+
+    full_metrics = {
+        "pre_process_time": report.op_pre.total_time,
+        "pre_process_count": report.op_pre.count,
+        "embedding_time": report.op_embedding.total_time,
+        "embedding_count": report.op_embedding.count,
+        "search_time": report.op_search.total_time,
+        "search_count": report.op_search.count,
+        "data_time": report.op_data.total_time,
+        "data_count": report.op_data.count,
+        "eval_time": report.op_evaluation.total_time,
+        "eval_count": report.op_evaluation.count,
+        "post_process_time": report.op_post.total_time,
+        "post_process_count": report.op_post.count,
+        "llm_time": report.op_llm.total_time,
+        "llm_count": report.op_llm.count,
+        "save_time": report.op_save.total_time,
+        "save_count": report.op_save.count,
+        "average_pre_time": report.op_pre.average(),
+        "average_emb_time": report.op_embedding.average(),
+        "average_search_time": report.op_search.average(),
+        "average_data_time": report.op_data.average(),
+        "average_eval_time": report.op_evaluation.average(),
+        "average_post_time": report.op_post.average(),
+        "average_llm_time": report.op_llm.average(),
+        "average_save_time": report.op_save.average(),
+        "cache_hits": report.hint_cache_count,
+        }
+    
+    return full_metrics
+
+def track_request(question, start_time, is_cache_hit, similarity_score=None):
+    request_data = {
+        "timestamp": datetime.now().isoformat(),
+        "query": question,
+        "event_type": "CACHE_HIT" if is_cache_hit else "CACHE_MISS",
+        "response_time": time.time() - start_time,
+        "similarity_score": similarity_score
+    }
+    return request_data

@@ -112,6 +112,7 @@ def main():
             "can you tell me more about GitHub? Explain briefly.",
             "what is the purpose of GitHub? Explain briefly.",
             "Hello",
+            "What is the capital of France?",
             #"Give me a short summary of simulated annealing",
             #"What is git cherry pick",
             #"Give me a name suggestion for my dog, he likes peanut butter"
@@ -140,12 +141,23 @@ def main():
             print("Cache verification result:", verify_cache(cached_llm, llm_cache))
             for question in questions:
                 start_time = time.time()
+                
+                pre_stats = {
+                    "hits": llm_cache.report.hint_cache_count,
+                    "llm_calls": llm_cache.report.op_llm.count,
+                }
+                
                 answer = cached_llm(prompt=question, cache_obj=llm_cache)
                 print(f"Question: {question}")
                 print("Time consuming: {:.2f}s".format(time.time() - start_time))
                 print(f"Answer: {answer}\n")
                 # print this line in blue color
                 print("\033[94m" + "-----------------------------------------------------------" + "\033[0m\n")
+
+            metrics = helpers.convert_gptcache_report(llm_cache)
+            for key, value in metrics.items():
+                print(f"{key}: {value}")
+
         finally:
             # Explicit cleanup in safe order
             llm_cache.flush()
