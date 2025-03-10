@@ -137,6 +137,9 @@ def main():
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 # Run LLM with cache
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
+
+        requests_data = []
+
         try:
             print("Cache verification result:", verify_cache(cached_llm, llm_cache))
             for question in questions:
@@ -148,6 +151,11 @@ def main():
                 }
                 
                 answer = cached_llm(prompt=question, cache_obj=llm_cache)
+
+                is_hit = llm_cache.report.hint_cache_count > pre_stats["hits"]
+
+                requests_data.append(helpers.track_request(question, start_time, is_hit))
+
                 print(f"Question: {question}")
                 print("Time consuming: {:.2f}s".format(time.time() - start_time))
                 print(f"Answer: {answer}\n")
@@ -157,6 +165,8 @@ def main():
             metrics = helpers.convert_gptcache_report(llm_cache)
             for key, value in metrics.items():
                 print(f"{key}: {value}")
+            
+            metrics["requests"] = requests_data
 
         finally:
             # Explicit cleanup in safe order
