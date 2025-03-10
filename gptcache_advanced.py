@@ -2,6 +2,10 @@ import os
 os.environ['OBJC_DISABLE_INITIALIZE_FORK_SAFETY'] = 'YES'
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
+CACHE_DIR = "./persistent_cache"
+
+os.makedirs(CACHE_DIR, exist_ok=True)
+
 import warnings
 warnings.filterwarnings("ignore", message="The method `BaseLLM.__call__` was deprecated")
 
@@ -28,6 +32,26 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s',
     stream=sys.stdout
 )
+
+def verify_cache(cached_llm, llm_cache):
+    # Run a test query that should be cached
+    test_question = "Tell me a joke."
+    
+    start_time = time.time()
+    answer = cached_llm(prompt=test_question, cache_obj=llm_cache)
+    first_time = time.time() - start_time
+    
+    print(f"First query time: {first_time:.4f}s")
+    
+    # Run the same query again - should be faster if cache works
+    start_time = time.time()
+    answer = cached_llm(prompt=test_question, cache_obj=llm_cache)
+    second_time = time.time() - start_time
+    
+    print(f"Second query time: {second_time:.4f}s")
+    print(f"Speed improvement: {first_time/second_time:.2f}x faster")
+    
+    return second_time < first_time
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 # Embedding
@@ -62,15 +86,14 @@ def main():
             "dimension": 384,
             "index_type": "IDMap,Flat",
             "metric_type": faiss.METRIC_L2,
+            "index_path": os.path.join(CACHE_DIR, "faiss.index"),
         }
 
-        cache_base = CacheBase("sqlite")
+        cache_base = CacheBase("sqlite",
+                               sql_url=f"sqlite:///{os.path.join(CACHE_DIR, 'cache.db')}")
+                               
         vector_base = VectorBase("faiss", **vector_params)
         data_manager = get_data_manager(cache_base, vector_base)
-
-        if hasattr(data_manager.v, '_index') and data_manager.v._index is not None:
-            #print("Got here!!!! ------------------------------------")
-            data_manager.v._index = faiss.index_factory(vector_params["dimension"], vector_params["index_type"])
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 # LLM
@@ -89,9 +112,9 @@ def main():
             "can you tell me more about GitHub? Explain briefly.",
             "what is the purpose of GitHub? Explain briefly.",
             "Hello",
-            "Give me a short summary of simulated annealing",
-            "What is git cherry pick",
-            "Give me a name suggestion for my dog, he likes peanut butter"
+            #"Give me a short summary of simulated annealing",
+            #"What is git cherry pick",
+            #"Give me a name suggestion for my dog, he likes peanut butter"
         ]
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
@@ -106,7 +129,7 @@ def main():
             similarity_evaluation=evaluation,
         )
 
-        llm_cache.config = Config(similarity_threshold=0.1)
+        #llm_cache.config = Config(similarity_threshold=0.9)
 
         cached_llm = LangChainLLMs(llm=llm)
 
@@ -114,6 +137,7 @@ def main():
 # Run LLM with cache
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
         try:
+            print("Cache verification result:", verify_cache(cached_llm, llm_cache))
             for question in questions:
                 start_time = time.time()
                 answer = cached_llm(prompt=question, cache_obj=llm_cache)
@@ -132,21 +156,22 @@ def main():
                     logging.debug("Debug: data_manager.v exists")
                     logging.debug(f"Debug: data_manager.v attributes: {dir(data_manager.v)}")
                     logging.debug(f"Debug: data_manager.v type: {type(data_manager.v)}")
-                    
+
                     # Try to access _index and log the result
                     try:
                         index = getattr(data_manager.v, '_index', None)
                         logging.debug(f"Debug: _index value: {index}")
+                        data_manager.v.flush()
                     except Exception as index_error:
                         logging.error(f"Error accessing _index: {index_error}")
                         logging.error(traceback.format_exc())
                     
-                    if hasattr(data_manager.v, '_index') and data_manager.v._index is not None:
-                        logging.debug("Debug: _index exists and is not None")
-                        if hasattr(data_manager.v, '_index_file_path'):
-                            logging.debug(f"Debug: _index_file_path exists: {data_manager.v._index_file_path}")
-                            faiss.write_index(data_manager.v._index, data_manager.v._index_file_path)
-                        data_manager.v._index.reset()
+                    #if hasattr(data_manager.v, '_index') and data_manager.v._index is not None:
+                    #    logging.debug("Debug: _index exists and is not None")
+                    #    if hasattr(data_manager.v, '_index_file_path'):
+                    #        logging.debug(f"Debug: _index_file_path exists: {data_manager.v._index_file_path}")
+                    #        faiss.write_index(data_manager.v._index, data_manager.v._index_file_path)
+                    #    data_manager.v._index.reset()
                         #del data_manager.v._index
             except Exception as e:
                 logging.error(f"Warning during FAISS cleanup: {str(e)}")

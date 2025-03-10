@@ -44,8 +44,22 @@ class localLlama(LLM):
             stop=stop
         )
 
+        # Check different response structures and extract content
+        if hasattr(response, 'model_extra') and 'content' in response.model_extra:
+            result = response.model_extra["content"]
+        elif hasattr(response, 'choices') and len(response.choices) > 0:
+            if hasattr(response.choices[0], 'text'):
+                result = response.choices[0].text
+            elif hasattr(response.choices[0], 'message') and hasattr(response.choices[0].message, 'content'):
+                result = response.choices[0].get('text', '')
+            else:
+                result = response.choices[0].get('text', '')
+        else:
+            result = str(response)
+
+
         # print("response:", response)
-        result = response.model_extra["content"]
+        # result = response.model_extra["content"]
         return result
 
     def _stream(
