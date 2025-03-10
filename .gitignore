@@ -5,3 +5,10 @@ faiss.index
 sqlite.db
 test.json
 .vscode/
+.DS_Store
+.venv/
+__pycache__/
+cache_logs/
+cache_reports/
+debug.log
+persistent_cache/
