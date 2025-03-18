@@ -112,7 +112,8 @@ def main():
             "can you tell me more about GitHub? Explain briefly.",
             "what is the purpose of GitHub? Explain briefly.",
             "Hello",
-            "What is the capital of France?",
+            "What is the capital of Paris?",
+            "Tell me a pirate joke",
             #"Give me a short summary of simulated annealing",
             #"What is git cherry pick",
             #"Give me a name suggestion for my dog, he likes peanut butter"
@@ -154,7 +155,7 @@ def main():
 
                 is_hit = llm_cache.report.hint_cache_count > pre_stats["hits"]
 
-                requests_data.append(helpers.track_request(question, start_time, is_hit))
+                requests_data.append(helpers.track_request(question, answer, start_time, is_hit))
 
                 print(f"Question: {question}")
                 print("Time consuming: {:.2f}s".format(time.time() - start_time))
@@ -167,6 +168,10 @@ def main():
                 print(f"{key}: {value}")
             
             metrics["requests"] = requests_data
+
+            print("Requests data:")
+            for request in requests_data:
+                print(request)
 
         finally:
             # Explicit cleanup in safe order
