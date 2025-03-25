@@ -676,141 +676,482 @@ class CachePerformanceAnalyzer:
     
     def generate_html_report(self, run_data: Dict[str, Any], include_plots: bool = True) -> str:
         """
-        Generate an HTML report for a run.
-        
+        Generate an HTML report for a run with enhanced styling.
+
         Args:
             run_data: The run data dictionary
             include_plots: Whether to include plots in the report
-            
+
         Returns:
             HTML report as a string
         """
         try:
             # Ensure we have a valid structure
             self._ensure_valid_structure(run_data)
-            
+
             summary = self.generate_performance_summary(run_data)
             run_id = summary.get("run_id", "Unknown")
-            
+
             # Prepare plots if needed
             plot_paths = {}
             if include_plots:
                 os.makedirs(os.path.join(self.output_dir, f"run_{run_id}"), exist_ok=True)
-                
+
                 # Generate and save plots
                 dist_path = os.path.join(self.output_dir, f"run_{run_id}", "distribution.png")
                 self.plot_cache_hit_distribution(run_data, dist_path)
                 plot_paths["distribution"] = os.path.basename(dist_path)
-                
+
                 time_path = os.path.join(self.output_dir, f"run_{run_id}", "response_times.png")
                 self.plot_response_time_comparison(run_data, time_path)
                 plot_paths["response_times"] = os.path.basename(time_path)
-                
+
                 similarity_path = os.path.join(self.output_dir, f"run_{run_id}", "similarity.png")
                 self.plot_similarity_score_distribution(run_data, similarity_path)
                 plot_paths["similarity"] = os.path.basename(similarity_path)
-            
-            # Build HTML content
+
+            # Calculate performance stats for dashboard
+            total_requests = summary["total_requests"]
+            cache_hits = summary["cache_hits"]
+            positive_hits = summary["positive_hits"]
+            time_saved = summary["time_saved"]
+            avg_cache_time = summary["avg_cache_time"]
+            avg_llm_time = summary["avg_llm_time"]
+
+            # Speed improvement calculation
+            speed_improvement = avg_llm_time / avg_cache_time if avg_cache_time > 0 else 0
+
+            # Build HTML content with enhanced styling
             html = f"""
             <!DOCTYPE html>
-            <html>
+            <html lang="en">
             <head>
-                <title>Cache Performance Report - Run #{run_id}</title>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>GPTCache Performance Report - Run #{run_id}</title>
+                <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
                 <style>
-                    body {{ font-family: Arial, sans-serif; margin: 0; padding: 20px; }}
-                    h1, h2, h3 {{ color: #2c3e50; }}
-                    .summary-card {{ background-color: #f8f9fa; border-radius: 8px; padding: 15px; margin-bottom: 20px; }}
-                    .metric {{ margin-bottom: 10px; }}
-                    .metric-name {{ font-weight: bold; color: #34495e; }}
-                    .metric-value {{ color: #3498db; font-size: 1.2em; }}
-                    .good {{ color: #2ecc71; }}
-                    .warning {{ color: #f39c12; }}
-                    .poor {{ color: #e74c3c; }}
-                    .plot-container {{ margin: 20px 0; }}
-                    .plot-container img {{ max-width: 100%; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }}
-                    table {{ width: 100%; border-collapse: collapse; margin: 20px 0; }}
-                    th, td {{ padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }}
-                    th {{ background-color: #f2f2f2; }}
-                    tr:hover {{ background-color: #f5f5f5; }}
+                    :root {{
+                        --primary: #3a86ff;
+                        --primary-light: #e9f0ff;
+                        --success: #38b000;
+                        --warning: #ffb703;
+                        --danger: #ff5a5f;
+                        --dark: #252525;
+                        --text: #333333;
+                        --light-text: #6c757d;
+                        --light-bg: #f8f9fa;
+                        --lighter-bg: #ffffff;
+                        --border: #e9ecef;
+                        --shadow: rgba(0, 0, 0, 0.05);
+                    }}
+
+                    * {{
+                        margin: 0;
+                        padding: 0;
+                        box-sizing: border-box;
+                    }}
+
+                    body {{
+                        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                        line-height: 1.6;
+                        color: var(--text);
+                        background-color: var(--light-bg);
+                        padding: 0;
+                        margin: 0;
+                    }}
+
+                    .container {{
+                        max-width: 1200px;
+                        margin: 0 auto;
+                        padding: 0 20px;
+                    }}
+
+                    .header {{
+                        background-color: var(--primary);
+                        color: white;
+                        padding: 20px 0;
+                        margin-bottom: 30px;
+                        box-shadow: 0 4px 12px var(--shadow);
+                    }}
+
+                    .header h1 {{
+                        font-size: 2.2rem;
+                        margin-bottom: 5px;
+                    }}
+
+                    .header p {{
+                        opacity: 0.9;
+                        font-size: 1.1rem;
+                    }}
+
+                    .dashboard {{
+                        display: grid;
+                        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+                        gap: 20px;
+                        margin-bottom: 30px;
+                    }}
+
+                    .metric-card {{
+                        background-color: var(--lighter-bg);
+                        border-radius: 12px;
+                        padding: 24px;
+                        box-shadow: 0 4px 12px var(--shadow);
+                        transition: transform 0.3s ease, box-shadow 0.3s ease;
+                        position: relative;
+                        overflow: hidden;
+                    }}
+
+                    .metric-card:hover {{
+                        transform: translateY(-5px);
+                        box-shadow: 0 8px 24px var(--shadow);
+                    }}
+
+                    .metric-card i {{
+                        position: absolute;
+                        top: 20px;
+                        right: 20px;
+                        font-size: 2rem;
+                        opacity: 0.15;
+                    }}
+
+                    .metric-label {{
+                        font-size: 1rem;
+                        text-transform: uppercase;
+                        letter-spacing: 0.5px;
+                        font-weight: 600;
+                        color: var(--light-text);
+                        margin-bottom: 8px;
+                    }}
+
+                    .metric-value {{
+                        font-size: 2.2rem;
+                        font-weight: 700;
+                        margin-bottom: 5px;
+                    }}
+
+                    .metric-context {{
+                        font-size: 0.95rem;
+                        color: var(--light-text);
+                    }}
+
+                    .primary {{ color: var(--primary); }}
+                    .success {{ color: var(--success); }}
+                    .warning {{ color: var(--warning); }}
+                    .danger {{ color: var(--danger); }}
+
+                    .section {{
+                        background-color: var(--lighter-bg);
+                        border-radius: 12px;
+                        padding: 30px;
+                        margin-bottom: 30px;
+                        box-shadow: 0 4px 12px var(--shadow);
+                    }}
+
+                    .section-title {{
+                        font-size: 1.6rem;
+                        margin-bottom: 20px;
+                        color: var(--dark);
+                        padding-bottom: 10px;
+                        border-bottom: 2px solid var(--primary-light);
+                    }}
+
+                    .sub-title {{
+                        font-size: 1.3rem;
+                        margin: 25px 0 15px 0;
+                        color: var(--dark);
+                    }}
+
+                    .metrics-grid {{
+                        display: grid;
+                        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                        gap: 20px;
+                        margin-bottom: 20px;
+                    }}
+
+                    .stat-item {{
+                        background-color: var(--primary-light);
+                        border-radius: 10px;
+                        padding: 15px;
+                    }}
+
+                    .stat-label {{
+                        font-size: 0.9rem;
+                        color: var(--light-text);
+                        margin-bottom: 5px;
+                    }}
+
+                    .stat-value {{
+                        font-size: 1.2rem;
+                        font-weight: 600;
+                    }}
+
+                    .plot-grid {{
+                        display: grid;
+                        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+                        gap: 30px;
+                        margin-top: 20px;
+                    }}
+
+                    .plot-container {{
+                        margin-bottom: 20px;
+                        background-color: var(--lighter-bg);
+                        border-radius: 12px;
+                        padding: 20px;
+                        box-shadow: 0 4px 12px var(--shadow);
+                    }}
+
+                    .plot-container h3 {{
+                        font-size: 1.2rem;
+                        margin-bottom: 15px;
+                        color: var(--dark);
+                    }}
+
+                    .plot-container img {{
+                        width: 100%;
+                        border-radius: 8px;
+                        transition: transform 0.3s ease;
+                    }}
+
+                    .plot-container img:hover {{
+                        transform: scale(1.02);
+                    }}
+
+                    table {{
+                        width: 100%;
+                        border-collapse: collapse;
+                        margin: 20px 0;
+                        font-size: 0.95rem;
+                    }}
+
+                    th, td {{
+                        padding: 15px;
+                        text-align: left;
+                        border-bottom: 1px solid var(--border);
+                    }}
+
+                    th {{
+                        background-color: var(--primary-light);
+                        color: var(--primary);
+                        font-weight: 600;
+                        position: sticky;
+                        top: 0;
+                    }}
+
+                    tr:hover {{
+                        background-color: rgba(58, 134, 255, 0.05);
+                    }}
+
+                    .table-container {{
+                        max-height: 500px;
+                        overflow-y: auto;
+                        border-radius: 8px;
+                        border: 1px solid var(--border);
+                    }}
+
+                    .badge {{
+                        display: inline-block;
+                        padding: 4px 8px;
+                        border-radius: 30px;
+                        font-size: 0.8rem;
+                        font-weight: 600;
+                        text-transform: uppercase;
+                    }}
+
+                    .badge-hit {{
+                        background-color: rgba(56, 176, 0, 0.15);
+                        color: var(--success);
+                    }}
+
+                    .badge-miss {{
+                        background-color: rgba(255, 90, 95, 0.15);
+                        color: var(--danger);
+                    }}
+
+                    .badge-direct {{
+                        background-color: rgba(255, 183, 3, 0.15);
+                        color: var(--warning);
+                    }}
+
+                    footer {{
+                        text-align: center;
+                        padding: 20px;
+                        color: var(--light-text);
+                        font-size: 0.9rem;
+                        border-top: 1px solid var(--border);
+                        margin-top: 30px;
+                    }}
+
+                    .progress-bar {{
+                        height: 10px;
+                        background-color: var(--border);
+                        border-radius: 5px;
+                        margin-top: 5px;
+                        overflow: hidden;
+                    }}
+
+                    .progress-fill {{
+                        height: 100%;
+                        border-radius: 5px;
+                    }}
+
+                    /* Responsive adjustments */
+                    @media (max-width: 768px) {{
+                        .dashboard {{
+                            grid-template-columns: 1fr;
+                        }}
+
+                        .plot-grid {{
+                            grid-template-columns: 1fr;
+                        }}
+
+                        .metric-value {{
+                            font-size: 1.8rem;
+                        }}
+                    }}
                 </style>
             </head>
             <body>
-                <h1>Cache Performance Report - Run #{run_id}</h1>
-                <div class="summary-card">
-                    <h2>Performance Summary</h2>
-                    <div class="metric">
-                        <span class="metric-name">Total Requests:</span>
-                        <span class="metric-value">{summary["total_requests"]}</span>
-                    </div>
-                    <div class="metric">
-                        <span class="metric-name">Cache Hit Rate:</span>
-                        <span class="metric-value {self._get_rating_class(summary["cache_hit_rate"], [0.3, 0.7])}">
-                            {summary["cache_hit_rate"]:.2%}
-                        </span>
-                    </div>
-                    <div class="metric">
-                        <span class="metric-name">Positive Hit Rate:</span>
-                        <span class="metric-value {self._get_rating_class(summary["positive_hit_rate"], [0.7, 0.9])}">
-                            {summary["positive_hit_rate"]:.2%}
-                        </span>
-                    </div>
-                    <div class="metric">
-                        <span class="metric-name">Average Cache Response Time:</span>
-                        <span class="metric-value">{summary["avg_cache_time"]:.4f} seconds</span>
-                    </div>
-                    <div class="metric">
-                        <span class="metric-name">Average LLM Response Time:</span>
-                        <span class="metric-value">{summary["avg_llm_time"]:.4f} seconds</span>
-                    </div>
-                    <div class="metric">
-                        <span class="metric-name">Time Saved:</span>
-                        <span class="metric-value good">{summary["time_saved"]:.4f} seconds</span>
+                <div class="header">
+                    <div class="container">
+                        <h1><i class="fas fa-chart-line"></i> GPTCache Performance Report</h1>
+                        <p>Run #{run_id} | Generated on {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}</p>
                     </div>
                 </div>
+
+                <div class="container">
+                    <!-- Key Metrics Dashboard -->
+                    <div class="dashboard">
+                        <div class="metric-card">
+                            <i class="fas fa-server"></i>
+                            <div class="metric-label">Total Requests</div>
+                            <div class="metric-value primary">{total_requests}</div>
+                            <div class="metric-context">Processed through cache</div>
+                        </div>
+
+                        <div class="metric-card">
+                            <i class="fas fa-bolt"></i>
+                            <div class="metric-label">Cache Hit Rate</div>
+                            <div class="metric-value {self._get_rating_class(summary["cache_hit_rate"], [0.3, 0.7])}">
+                                {summary["cache_hit_rate"]:.1%}
+                            </div>
+                            <div class="metric-context">
+                                {cache_hits} hits out of {total_requests} requests
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: {summary["cache_hit_rate"] * 100}%; background-color: {self._get_progress_color(summary["cache_hit_rate"], [0.3, 0.7])}"></div>
+                            </div>
+                        </div>
+
+                        <div class="metric-card">
+                            <i class="fas fa-tachometer-alt"></i>
+                            <div class="metric-label">Speed Improvement</div>
+                            <div class="metric-value success">{speed_improvement:.1f}x</div>
+                            <div class="metric-context">
+                                Cache: {avg_cache_time:.3f}s vs LLM: {avg_llm_time:.3f}s
+                            </div>
+                        </div>
+
+                        <div class="metric-card">
+                            <i class="fas fa-clock"></i>
+                            <div class="metric-label">Time Saved</div>
+                            <div class="metric-value success">{time_saved:.2f}s</div>
+                            <div class="metric-context">
+                                From {positive_hits} positive cache hits
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Detailed Performance Section -->
+                    <div class="section">
+                        <h2 class="section-title">Detailed Performance Metrics</h2>
+
+                        <div class="metrics-grid">
+                            <div class="stat-item">
+                                <div class="stat-label">Positive Hits</div>
+                                <div class="stat-value success">{summary["positive_hits"]}</div>
+                            </div>
+
+                            <div class="stat-item">
+                                <div class="stat-label">Negative Hits</div>
+                                <div class="stat-value warning">{summary["negative_hits"]}</div>
+                            </div>
+
+                            <div class="stat-item">
+                                <div class="stat-label">Cache Misses</div>
+                                <div class="stat-value danger">{summary["cache_misses"]}</div>
+                            </div>
+
+                            <div class="stat-item">
+                                <div class="stat-label">Direct LLM Calls</div>
+                                <div class="stat-value primary">{summary["llm_direct_calls"]}</div>
+                            </div>
+
+                            <div class="stat-item">
+                                <div class="stat-label">Positive Hit Rate</div>
+                                <div class="stat-value {self._get_rating_class(summary["positive_hit_rate"], [0.7, 0.9])}">
+                                    {summary["positive_hit_rate"]:.1%}
+                                </div>
+                            </div>
+
+                            <div class="stat-item">
+                                <div class="stat-label">Avg Cache Time</div>
+                                <div class="stat-value">{summary["avg_cache_time"]:.3f}s</div>
+                            </div>
+                        </div>
+                    </div>
             """
-            
+
             # Add plots if included
             if include_plots:
                 html += """
-                <h2>Performance Visualizations</h2>
-                
-                <div class="plot-container">
-                    <h3>Cache Hit Distribution</h3>
-                    <img src="{}" alt="Cache Hit Distribution">
-                </div>
-               
-                <div class="plot-container">
-                    <h3>Similarity Score Distribution</h3>
-                    <img src="{}" alt="Similarity Score Distribution">
-                </div>
+                    <!-- Performance Visualizations -->
+                    <div class="section">
+                        <h2 class="section-title">Performance Visualizations</h2>
+
+                        <div class="plot-container">
+                            <h3><i class="fas fa-chart-pie"></i> Cache Hit Distribution</h3>
+                            <img src="{}" alt="Cache Hit Distribution">
+                        </div>
+
+                        <div class="plot-container">
+                            <h3><i class="fas fa-chart-line"></i> Similarity Score Distribution</h3>
+                            <img src="{}" alt="Similarity Score Distribution">
+                        </div>
+                    </div>
                 """.format(
                     plot_paths.get("distribution", "#"),
                     #plot_paths.get("response_times", "#"),
                     plot_paths.get("similarity", "#")
                 )
-            
+
             # Get request details from DataFrame for the table
             df = self._prepare_run_dataframe(run_data)
-            
+
             # If we have request data, add the table
             if len(df) > 0:
                 df = df.head(20)  # Take first 20 for the report
-                
+
                 html += """
-                    <h2>Request Details (First 20)</h2>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>#</th>
-                                <th>Query</th>
-                                <th>Event Type</th>
-                                <th>Response Time</th>
-                                <th>Similarity Score</th>
-                            </tr>
-                        </thead>
-                        <tbody>
+                    <!-- Request Details Section -->
+                    <div class="section">
+                        <h2 class="section-title">Request Details</h2>
+                        <p>Showing the first 20 requests processed during this run</p>
+
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Query</th>
+                                        <th>Event Type</th>
+                                        <th>Response Time</th>
+                                        <th>Similarity</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
                 """
-                
+
                 for _, row in df.iterrows():
                     # Truncate query for display
                     query = row.get("query", "")
@@ -818,42 +1159,109 @@ class CachePerformanceAnalyzer:
                         query = query[:50] + "..." if len(query) > 50 else query
                     else:
                         query = str(query)
-                    
+
+                    # Determine badge class based on event type
+                    event_type = row.get("event_type", "UNKNOWN")
+                    badge_class = "badge-direct"
+
+                    if "HIT" in event_type:
+                        badge_class = "badge-hit"
+                    elif "MISS" in event_type:
+                        badge_class = "badge-miss"
+
+                    # Format similarity score
+                    similarity = row.get("similarity_score", None)
+                    if similarity is not None and pd.notna(similarity):
+                        similarity_display = f"{similarity:.3f}"
+                    else:
+                        similarity_display = "N/A"
+
                     # Format row
                     html += f"""
                         <tr>
                             <td>{row.get("request_num", "-")}</td>
                             <td>{query}</td>
-                            <td>{row.get("event_type", "-")}</td>
-                            <td>{row.get("response_time", 0):.4f}s</td>
-                            <td>{row.get("similarity_score", "N/A") if pd.notna(row.get("similarity_score", pd.NA)) else "N/A"}</td>
+                            <td><span class="badge {badge_class}">{event_type}</span></td>
+                            <td>{row.get("response_time", 0):.3f}s</td>
+                            <td>{similarity_display}</td>
                         </tr>
                     """
-                
+
                 html += """
-                        </tbody>
-                    </table>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
                 """
             else:
                 html += """
-                    <h2>Request Details</h2>
-                    <p>No request data available for this run.</p>
+                    <!-- No Request Data Message -->
+                    <div class="section">
+                        <h2 class="section-title">Request Details</h2>
+                        <p>No request data available for this run.</p>
+                    </div>
                 """
-            
+
             # Close HTML
             html += """
-                <footer>
-                    <p>Generated on: {}</p>
-                </footer>
+                    <footer>
+                        <p>Generated by GPTCache Performance Analyzer on {}</p>
+                        <p><i class="fas fa-code"></i> LLM Caching Project</p>
+                    </footer>
+                </div>
+
+                <script>
+                    // Simple JavaScript for interactivity
+                    document.addEventListener('DOMContentLoaded', function() {{
+                        // Add hover effect to table rows
+                        const rows = document.querySelectorAll('tbody tr');
+                        rows.forEach(row => {{
+                            row.addEventListener('mouseenter', function() {{
+                                this.style.backgroundColor = 'rgba(58, 134, 255, 0.1)';
+                            }});
+                            row.addEventListener('mouseleave', function() {{
+                                this.style.backgroundColor = '';
+                            }});
+                        }});
+
+                        // Make plot images enlargeable on click
+                        const plots = document.querySelectorAll('.plot-container img');
+                        plots.forEach(plot => {{
+                            plot.style.cursor = 'pointer';
+                            plot.addEventListener('click', function() {{
+                                this.classList.toggle('enlarged');
+                                if (this.classList.contains('enlarged')) {{
+                                    this.style.position = 'fixed';
+                                    this.style.top = '50%';
+                                    this.style.left = '50%';
+                                    this.style.transform = 'translate(-50%, -50%) scale(1.5)';
+                                    this.style.maxWidth = '90vw';
+                                    this.style.maxHeight = '90vh';
+                                    this.style.zIndex = '1000';
+                                    this.style.boxShadow = '0 0 0 1000px rgba(0,0,0,0.7)';
+                                }} else {{
+                                    this.style.position = '';
+                                    this.style.top = '';
+                                    this.style.left = '';
+                                    this.style.transform = '';
+                                    this.style.maxWidth = '';
+                                    this.style.maxHeight = '';
+                                    this.style.zIndex = '';
+                                    this.style.boxShadow = '';
+                                }}
+                            }});
+                        }});
+                    }});
+                </script>
             </body>
             </html>
             """.format(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-            
+
             return html
         except Exception as e:
             print(f"Error generating HTML report: {e}")
             traceback.print_exc()
-            
+
             # Return a simple error report
             return f"""
             <!DOCTYPE html>
@@ -861,7 +1269,7 @@ class CachePerformanceAnalyzer:
             <head>
                 <title>Cache Performance Report - Error</title>
                 <style>
-                    body {{ font-family: Arial, sans-serif; margin: 0; padding: 20px; }}
+                    body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; }}
                     h1, h2 {{ color: #e74c3c; }}
                     .error-box {{ background-color: #f8d7da; border-radius: 8px; padding: 15px; margin-bottom: 20px; color: #721c24; }}
                 </style>
@@ -879,7 +1287,17 @@ class CachePerformanceAnalyzer:
             </body>
             </html>
             """
-    
+
+    def _get_progress_color(self, value: float, thresholds: List[float]) -> str:
+        """Helper to get a color for progress bars based on thresholds."""
+        if value < thresholds[0]:
+            return "#ff5a5f"  # Danger/poor (red)
+        elif value < thresholds[1]:
+            return "#ffb703"  # Warning (yellow)
+        else:
+            return "#38b000"  # Good (green)
+
+
     def _get_rating_class(self, value: float, thresholds: List[float]) -> str:
         """Helper to get a rating class based on thresholds."""
         if value < thresholds[0]:

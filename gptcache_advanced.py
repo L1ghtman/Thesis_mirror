@@ -126,11 +126,11 @@ def main():
             "can you tell me more about GitHub? Explain briefly.",
             "what is the purpose of GitHub? Explain briefly.",
             "Hello",
-            #"What is the capital of US?",
-            #"Tell me a pirate joke",
-            #"Give me a short summary of simulated annealing",
-            #"What is git cherry pick",
-            #"Give me a name suggestion for my dog, he likes peanut butter"
+            "What is the capital of US?",
+            "Tell me a pirate joke",
+            "Give me a short summary of simulated annealing",
+            "What is git cherry pick",
+            "Give me a name suggestion for my dog, he likes peanut butter"
         ]
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
