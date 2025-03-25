@@ -778,19 +778,14 @@ class CachePerformanceAnalyzer:
                     <h3>Cache Hit Distribution</h3>
                     <img src="{}" alt="Cache Hit Distribution">
                 </div>
-                
-                <div class="plot-container">
-                    <h3>Response Time Comparison</h3>
-                    <img src="{}" alt="Response Time Comparison">
-                </div>
-                
+               
                 <div class="plot-container">
                     <h3>Similarity Score Distribution</h3>
                     <img src="{}" alt="Similarity Score Distribution">
                 </div>
                 """.format(
                     plot_paths.get("distribution", "#"),
-                    plot_paths.get("response_times", "#"),
+                    #plot_paths.get("response_times", "#"),
                     plot_paths.get("similarity", "#")
                 )
             
