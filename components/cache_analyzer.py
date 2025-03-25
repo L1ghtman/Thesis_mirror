@@ -700,15 +700,15 @@ class CachePerformanceAnalyzer:
                 # Generate and save plots
                 dist_path = os.path.join(self.output_dir, f"run_{run_id}", "distribution.png")
                 self.plot_cache_hit_distribution(run_data, dist_path)
-                plot_paths["distribution"] = os.path.relpath(dist_path, self.output_dir)
+                plot_paths["distribution"] = os.path.basename(dist_path)
                 
                 time_path = os.path.join(self.output_dir, f"run_{run_id}", "response_times.png")
                 self.plot_response_time_comparison(run_data, time_path)
-                plot_paths["response_times"] = os.path.relpath(time_path, self.output_dir)
+                plot_paths["response_times"] = os.path.basename(time_path)
                 
                 similarity_path = os.path.join(self.output_dir, f"run_{run_id}", "similarity.png")
                 self.plot_similarity_score_distribution(run_data, similarity_path)
-                plot_paths["similarity"] = os.path.relpath(similarity_path, self.output_dir)
+                plot_paths["similarity"] = os.path.basename(similarity_path)
             
             # Build HTML content
             html = f"""
