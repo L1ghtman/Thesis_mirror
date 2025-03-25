@@ -18,7 +18,7 @@ class localLlama(LLM):
 
         # Initialize the client. We're using the OpenAI API here but redirecting to a local server.
         self.client = OpenAI(base_url="http://127.0.0.1:8080", api_key="sk-xxx")
-
+        #self.client = OpenAI(base_url="http://localhost:1337", api_key="sk-xxx")
     @property
     def _llm_type(self) -> str:
         return "custom local"
@@ -43,6 +43,9 @@ class localLlama(LLM):
             presence_penalty=0.0,
             stop=stop
         )
+
+        #print response in red
+        #print("\033[91m" + str(response) + "\033[0m")
 
         # Check different response structures and extract content
         if hasattr(response, 'model_extra') and 'content' in response.model_extra:

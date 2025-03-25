@@ -72,13 +72,15 @@ def convert_gptcache_report(cache_obj, log_dir="cache_logs"):
     
     return full_metrics
 
-def track_request(question, response, start_time, is_cache_hit, similarity_score=None):
+def track_request(question, response, start_time, is_cache_hit, similarity_score=None, used_cache=True, temperature=None):
     request_data = {
         "timestamp": datetime.now().isoformat(),
         "query": question,
         "response": response,
         "event_type": "CACHE_HIT" if is_cache_hit else "CACHE_MISS",
         "response_time": time.time() - start_time,
-        "similarity_score": similarity_score
+        "similarity_score": similarity_score,
+        "used_cache": used_cache,
+        "temperature": temperature
     }
     return request_data

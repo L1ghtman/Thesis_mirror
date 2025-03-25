@@ -11,7 +11,7 @@ warnings.filterwarnings("ignore", message="The method `BaseLLM.__call__` was dep
 
 import time
 import logging
-from components import helpers, custom_llm, custom_sim_eval
+from components import helpers, custom_llm, custom_sim_eval, new_cache_logger, cache_analyzer
 import sys
 import traceback
 
@@ -42,13 +42,27 @@ def verify_cache(cached_llm, llm_cache):
     first_time = time.time() - start_time
     
     print(f"First query time: {first_time:.4f}s")
-    
+
+    #intersting_metrics = ["pre_process_count", "embedding_count", "search_count", "data_count", "eval_count", "post_process_count", "llm_count", "save_count", "cache_hits"]
+    #metrics = helpers.convert_gptcache_report(llm_cache)
+    #for key, value in metrics.items():
+    #    if key in intersting_metrics:
+    #        print(f"{key}: {value}")
+
+
     # Run the same query again - should be faster if cache works
     start_time = time.time()
     answer = cached_llm(prompt=test_question, cache_obj=llm_cache)
     second_time = time.time() - start_time
     
     print(f"Second query time: {second_time:.4f}s")
+    
+    #intersting_metrics = ["pre_process_count", "embedding_count", "search_count", "data_count", "eval_count", "post_process_count", "llm_count", "save_count", "cache_hits"]
+    #metrics = helpers.convert_gptcache_report(llm_cache)
+    #for key, value in metrics.items():
+    #    if key in intersting_metrics:
+    #        print(f"{key}: {value}")
+            
     print(f"Speed improvement: {first_time/second_time:.2f}x faster")
     
     return second_time < first_time
@@ -112,8 +126,8 @@ def main():
             "can you tell me more about GitHub? Explain briefly.",
             "what is the purpose of GitHub? Explain briefly.",
             "Hello",
-            "What is the capital of Paris?",
-            "Tell me a pirate joke",
+            #"What is the capital of US?",
+            #"Tell me a pirate joke",
             #"Give me a short summary of simulated annealing",
             #"What is git cherry pick",
             #"Give me a name suggestion for my dog, he likes peanut butter"
@@ -141,21 +155,35 @@ def main():
 
         requests_data = []
 
+        CacheLogger = new_cache_logger.CacheLogger()
+
         try:
-            print("Cache verification result:", verify_cache(cached_llm, llm_cache))
+            #print("Cache verification result:", verify_cache(cached_llm, llm_cache))
             for question in questions:
-                start_time = time.time()
                 
                 pre_stats = {
                     "hits": llm_cache.report.hint_cache_count,
                     "llm_calls": llm_cache.report.op_llm.count,
                 }
                 
+                start_time = time.time()
                 answer = cached_llm(prompt=question, cache_obj=llm_cache)
+                response_time = time.time() - start_time
 
                 is_hit = llm_cache.report.hint_cache_count > pre_stats["hits"]
 
-                requests_data.append(helpers.track_request(question, answer, start_time, is_hit))
+                #requests_data.append(helpers.track_request(question, answer, start_time, is_hit))
+
+                CacheLogger.log_request(
+                    query=question,
+                    response=answer,
+                    response_time=response_time,
+                    is_cache_hit=is_hit,
+                    similarity_score=None,
+                    used_cache=True,
+                    temperature=None,
+                    report_metrics=helpers.convert_gptcache_report(llm_cache)
+                )
 
                 print(f"Question: {question}")
                 print("Time consuming: {:.2f}s".format(time.time() - start_time))
@@ -163,16 +191,25 @@ def main():
                 # print this line in blue color
                 print("\033[94m" + "-----------------------------------------------------------" + "\033[0m\n")
 
-            metrics = helpers.convert_gptcache_report(llm_cache)
-            for key, value in metrics.items():
-                print(f"{key}: {value}")
+            CacheLogger.close()
+
+            report_path = cache_analyzer.generate_latest_run_report(log_dir="cache_logs")
+            print(f"Performance report saved to: {report_path}")
+
+            #intersting_metrics = ["pre_process_count", "embedding_count", "search_count", "data_count", "eval_count", "post_process_count", "llm_count", "save_count", "cache_hits"]
+            #metrics = helpers.convert_gptcache_report(llm_cache)
+            #for key, value in metrics.items():
+            #    if key in intersting_metrics:
+            #        print(f"{key}: {value}")
             
-            metrics["requests"] = requests_data
+            #metrics["requests"] = requests_data
 
-            print("Requests data:")
-            for request in requests_data:
-                print(request)
-
+            #print("Requests data:")
+            #for request in requests_data:
+            #    for key, value in request.items():
+            #        print(f"{key}: {value}")
+            #    # print green line
+            #    print("\033[92m" + "-----------------------------------------------------------" + "\033[0m\n")
         finally:
             # Explicit cleanup in safe order
             llm_cache.flush()
