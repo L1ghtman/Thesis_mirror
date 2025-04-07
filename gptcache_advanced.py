@@ -120,18 +120,23 @@ def main():
 # Questions
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 
-        questions = [
-            "What is github? Explain briefly.",
-            "can you explain what GitHub is? Explain briefly.",
-            "can you tell me more about GitHub? Explain briefly.",
-            "what is the purpose of GitHub? Explain briefly.",
-            "Hello",
-            "What is the capital of US?",
-            "Tell me a pirate joke",
-            "Give me a short summary of simulated annealing",
-            "What is git cherry pick",
-            "Give me a name suggestion for my dog, he likes peanut butter"
-        ]
+        from components.dataset_manager import DatasetManager, create_default_manager
+        
+        manager = create_default_manager()
+        questions = manager.get_questions(count=5)
+
+        # questions = [
+        #     "What is github? Explain briefly.",
+        #     "can you explain what GitHub is? Explain briefly.",
+        #     "can you tell me more about GitHub? Explain briefly.",
+        #     "what is the purpose of GitHub? Explain briefly.",
+        #     "Hello",
+        #     "What is the capital of US?",
+        #     "Tell me a pirate joke",
+        #     "Give me a short summary of simulated annealing",
+        #     "What is git cherry pick",
+        #     "Give me a name suggestion for my dog, he likes peanut butter"
+        # ]
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 # Cache initialization
