@@ -122,8 +122,10 @@ def main():
 
         from components.dataset_manager import DatasetManager, create_default_manager
         
-        manager = create_default_manager()
-        questions = manager.get_questions(count=5)
+        manager = DatasetManager()
+        manager.load_msmarco(split="train", max_samples=None)
+        manager.set_active_dataset("msmarco_train")
+        questions = manager.get_questions(dataset_name="msmarco_train")
 
         # questions = [
         #     "What is github? Explain briefly.",
