@@ -67,6 +67,15 @@ def verify_cache(cached_llm, llm_cache):
     
     return second_time < first_time
 
+import signal
+
+def signal_handler(sig, frame):
+    print("Benchmark interrupted, generating final report...")
+    Cache
+    report_path = cache_analyzer.generate_latest_run_report(log_dir="cache_logs")
+    print(f"Performance report saved to: {report_path}")
+    sys.exit(0)
+
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 # Embedding
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
@@ -191,6 +200,8 @@ def main():
                     temperature=None,
                     report_metrics=helpers.convert_gptcache_report(llm_cache)
                 )
+
+                signal.signal(signal.SIGINT, signal_handler)
 
                 print(f"Question: {question}")
                 print("Time consuming: {:.2f}s".format(time.time() - start_time))
