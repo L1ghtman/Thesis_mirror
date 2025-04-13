@@ -1,5 +1,5 @@
-from components import CachePerformanceAnalyer
+from components.cache_analyzer import CachePerformanceAnalyzer
 
-analyzer = CachePerformanceAnalyer(log_dir="cache_logs")
+analyzer = CachePerformanceAnalyzer(log_dir="cache_logs")
 latest_run = analyzer.load_run_data()
 analyzer.save_html_report(latest_run)
