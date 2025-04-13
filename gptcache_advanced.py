@@ -33,36 +33,22 @@ logging.basicConfig(
     stream=sys.stdout
 )
 
-def verify_cache(cached_llm, llm_cache):
+def verify_cache(cached_llm, semantic_cache):
     # Run a test query that should be cached
     test_question = "Tell me a joke."
     
     start_time = time.time()
-    answer = cached_llm(prompt=test_question, cache_obj=llm_cache)
+    answer = cached_llm(prompt=test_question, cache_obj=semantic_cache)
     first_time = time.time() - start_time
     
     print(f"First query time: {first_time:.4f}s")
 
-    #intersting_metrics = ["pre_process_count", "embedding_count", "search_count", "data_count", "eval_count", "post_process_count", "llm_count", "save_count", "cache_hits"]
-    #metrics = helpers.convert_gptcache_report(llm_cache)
-    #for key, value in metrics.items():
-    #    if key in intersting_metrics:
-    #        print(f"{key}: {value}")
-
-
     # Run the same query again - should be faster if cache works
     start_time = time.time()
-    answer = cached_llm(prompt=test_question, cache_obj=llm_cache)
+    answer = cached_llm(prompt=test_question, cache_obj=semantic_cache)
     second_time = time.time() - start_time
     
     print(f"Second query time: {second_time:.4f}s")
-    
-    #intersting_metrics = ["pre_process_count", "embedding_count", "search_count", "data_count", "eval_count", "post_process_count", "llm_count", "save_count", "cache_hits"]
-    #metrics = helpers.convert_gptcache_report(llm_cache)
-    #for key, value in metrics.items():
-    #    if key in intersting_metrics:
-    #        print(f"{key}: {value}")
-            
     print(f"Speed improvement: {first_time/second_time:.2f}x faster")
     
     return second_time < first_time
@@ -75,6 +61,83 @@ def signal_handler(sig, frame):
     report_path = cache_analyzer.generate_latest_run_report(log_dir="cache_logs")
     print(f"Performance report saved to: {report_path}")
     sys.exit(0)
+
+import asyncio
+import concurrent.futures
+from typing import List, Dict, Any
+
+def process_questions_in_parallel(questions: List[str], cached_llm, semantic_cache, logger, max_workers: int = 8):
+    """
+    Process multiple questions concurrently using a thread pool.
+    
+    Args:
+        questions: List of questions to process
+        cached_llm: The cached LLM instance
+        semantic_cache: The cache object
+        logger: Logger instance
+        max_workers: Maximum number of concurrent workers
+        
+    Returns:
+        List of results
+    """
+    results = []
+    
+    def process_single_question(question):
+        pre_stats = {
+            "hits": semantic_cache.report.hint_cache_count,
+            "llm_calls": semantic_cache.report.op_llm.count,
+        }
+        
+        start_time = time.time()
+        answer = cached_llm(prompt=question, cache_obj=semantic_cache)
+        response_time = time.time() - start_time
+
+        is_hit = semantic_cache.report.hint_cache_count > pre_stats["hits"]
+
+        logger.log_request(
+            query=question,
+            response=answer,
+            response_time=response_time,
+            is_cache_hit=is_hit,
+            similarity_score=None,
+            used_cache=True,
+            temperature=None,
+            report_metrics=helpers.convert_gptcache_report(semantic_cache)
+        )
+        
+        print(f"Question: {question}")
+        print("Time consuming: {:.2f}s".format(response_time))
+        print(f"Answer: {answer}\n")
+        print("\033[94m" + "-----------------------------------------------------------" + "\033[0m\n")
+        
+        return {
+            "question": question,
+            "answer": answer,
+            "time": response_time,
+            "is_hit": is_hit
+        }
+    
+    # Use ThreadPoolExecutor to process questions in parallel
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+        # Submit all questions to the executor
+        future_to_question = {
+            executor.submit(process_single_question, q): q 
+            for q in questions
+        }
+        
+        # Collect results as they complete
+        for future in concurrent.futures.as_completed(future_to_question):
+            question = future_to_question[future]
+            try:
+                result = future.result()
+                results.append(result)
+            except Exception as exc:
+                print(f"Question {question} generated an exception: {exc}")
+                # Might want to log this error
+    
+    return results
+
+
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 # Embedding
@@ -136,32 +199,32 @@ def main():
         manager.set_active_dataset("msmarco_train")
         questions = manager.get_questions(dataset_name="msmarco_train")
 
-        # questions = [
-        #     "What is github? Explain briefly.",
-        #     "can you explain what GitHub is? Explain briefly.",
-        #     "can you tell me more about GitHub? Explain briefly.",
-        #     "what is the purpose of GitHub? Explain briefly.",
-        #     "Hello",
-        #     "What is the capital of US?",
-        #     "Tell me a pirate joke",
-        #     "Give me a short summary of simulated annealing",
-        #     "What is git cherry pick",
-        #     "Give me a name suggestion for my dog, he likes peanut butter"
-        # ]
+        test_questions = [
+            "What is github? Explain briefly.",
+            "can you explain what GitHub is? Explain briefly.",
+            "can you tell me more about GitHub? Explain briefly.",
+            "what is the purpose of GitHub? Explain briefly.",
+            "Hello",
+            "What is the capital of US?",
+            "Tell me a pirate joke",
+            "Give me a short summary of simulated annealing",
+            "What is git cherry pick",
+            "Give me a name suggestion for my dog, he likes peanut butter"
+        ]
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 # Cache initialization
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 
-        llm_cache = Cache()
-        llm_cache.init(
+        semantic_cache = Cache()
+        semantic_cache.init(
             pre_embedding_func=get_prompt,
             embedding_func=embedding_func,
             data_manager=data_manager,
             similarity_evaluation=evaluation,
         )
 
-        #llm_cache.config = Config(similarity_threshold=0.9)
+        #semantic_cache.config = Config(similarity_threshold=0.9)
 
         cached_llm = LangChainLLMs(llm=llm)
 
@@ -169,26 +232,21 @@ def main():
 # Run LLM with cache
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 
-        requests_data = []
-
         CacheLogger = new_cache_logger.CacheLogger()
 
         try:
-            #print("Cache verification result:", verify_cache(cached_llm, llm_cache))
-            for question in questions:
+            for question in test_questions:
                 
                 pre_stats = {
-                    "hits": llm_cache.report.hint_cache_count,
-                    "llm_calls": llm_cache.report.op_llm.count,
+                    "hits": semantic_cache.report.hint_cache_count,
+                    "llm_calls": semantic_cache.report.op_llm.count,
                 }
                 
                 start_time = time.time()
-                answer = cached_llm(prompt=question, cache_obj=llm_cache)
+                answer = cached_llm(prompt=question, cache_obj=semantic_cache)
                 response_time = time.time() - start_time
 
-                is_hit = llm_cache.report.hint_cache_count > pre_stats["hits"]
-
-                #requests_data.append(helpers.track_request(question, answer, start_time, is_hit))
+                is_hit = semantic_cache.report.hint_cache_count > pre_stats["hits"]
 
                 CacheLogger.log_request(
                     query=question,
@@ -198,7 +256,7 @@ def main():
                     similarity_score=None,
                     used_cache=True,
                     temperature=None,
-                    report_metrics=helpers.convert_gptcache_report(llm_cache)
+                    report_metrics=helpers.convert_gptcache_report(semantic_cache)
                 )
 
                 signal.signal(signal.SIGINT, signal_handler)
@@ -209,28 +267,16 @@ def main():
                 # print this line in blue color
                 print("\033[94m" + "-----------------------------------------------------------" + "\033[0m\n")
 
+
             CacheLogger.close()
 
             report_path = cache_analyzer.generate_latest_run_report(log_dir="cache_logs")
             print(f"Performance report saved to: {report_path}")
 
-            #intersting_metrics = ["pre_process_count", "embedding_count", "search_count", "data_count", "eval_count", "post_process_count", "llm_count", "save_count", "cache_hits"]
-            #metrics = helpers.convert_gptcache_report(llm_cache)
-            #for key, value in metrics.items():
-            #    if key in intersting_metrics:
-            #        print(f"{key}: {value}")
             
-            #metrics["requests"] = requests_data
-
-            #print("Requests data:")
-            #for request in requests_data:
-            #    for key, value in request.items():
-            #        print(f"{key}: {value}")
-            #    # print green line
-            #    print("\033[92m" + "-----------------------------------------------------------" + "\033[0m\n")
         finally:
             # Explicit cleanup in safe order
-            llm_cache.flush()
+            semantic_cache.flush()
             
             # Safely cleanup FAISS index
             try:
@@ -247,14 +293,6 @@ def main():
                     except Exception as index_error:
                         logging.error(f"Error accessing _index: {index_error}")
                         logging.error(traceback.format_exc())
-                    
-                    #if hasattr(data_manager.v, '_index') and data_manager.v._index is not None:
-                    #    logging.debug("Debug: _index exists and is not None")
-                    #    if hasattr(data_manager.v, '_index_file_path'):
-                    #        logging.debug(f"Debug: _index_file_path exists: {data_manager.v._index_file_path}")
-                    #        faiss.write_index(data_manager.v._index, data_manager.v._index_file_path)
-                    #    data_manager.v._index.reset()
-                        #del data_manager.v._index
             except Exception as e:
                 logging.error(f"Warning during FAISS cleanup: {str(e)}")
                 logging.error("Full traceback:")
