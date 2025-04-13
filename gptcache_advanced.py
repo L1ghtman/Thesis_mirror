@@ -1,20 +1,10 @@
 import os
-os.environ['OBJC_DISABLE_INITIALIZE_FORK_SAFETY'] = 'YES'
-os.environ["TOKENIZERS_PARALLELISM"] = "false"
-
-CACHE_DIR = "./persistent_cache"
-
-os.makedirs(CACHE_DIR, exist_ok=True)
-
 import warnings
-warnings.filterwarnings("ignore", message="The method `BaseLLM.__call__` was deprecated")
-
 import time
 import logging
 from components import helpers, custom_llm, custom_sim_eval, new_cache_logger, cache_analyzer
 import sys
 import traceback
-
 import signal
 import faiss
 import multiprocessing
@@ -22,7 +12,6 @@ from components.dataset_manager import DatasetManager, create_default_manager
 import asyncio
 import concurrent.futures
 from typing import List, Dict, Any
-
 from gptcache import Config
 from gptcache.core import Cache
 from gptcache.processor.pre import get_prompt
@@ -31,6 +20,14 @@ from gptcache.adapter.langchain_models import LangChainLLMs
 from gptcache.embedding import SBERT
 from gptcache.similarity_evaluation import SbertCrossencoderEvaluation
 from gptcache.manager import get_data_manager
+
+os.environ['OBJC_DISABLE_INITIALIZE_FORK_SAFETY'] = 'YES'
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
+CACHE_DIR = "./persistent_cache"
+os.makedirs(CACHE_DIR, exist_ok=True)
+
+warnings.filterwarnings("ignore", message="The method `BaseLLM.__call__` was deprecated")
 
 # Configure logging to show full details
 logging.basicConfig(
@@ -270,7 +267,7 @@ def main():
         )
 
         #semantic_cache.config = Config(similarity_threshold=0.9)
-
+        llm = custom_llm.localLlama()
         cached_llm = LangChainLLMs(llm=llm)
 
         CacheLogger = new_cache_logger.CacheLogger()
