@@ -8,6 +8,21 @@ from numpy import np
 import time
 from components.helpers import convert_gptcache_report
 
+class EmbeddingInterceptor:
+    """
+    Intercept embeddings as they are generated for clustering.
+    """
+    def __init__(self, original_embedding_func):
+        self.original_func = original_embedding_func
+        self.last_embedding = None
+        self.last_query = None
+
+    def __call__(self, prompt, **kwargs):
+        self.last_query = prompt
+        embedding = self.original_func(prompt, **kwargs)
+        self.last_embedding = embedding
+        return embedding
+
 class SmartCache:
     def __init__(self, base_temperature=0.5, num_clusters=8):
         self.cache = Cache()
