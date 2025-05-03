@@ -20,6 +20,9 @@ from gptcache.adapter.langchain_models import LangChainLLMs
 from gptcache.embedding import SBERT
 from gptcache.similarity_evaluation import SbertCrossencoderEvaluation
 from gptcache.manager import get_data_manager
+from components.cache_utils import embedding_func, system_cleanup
+from components.smart_cache import SmartCache
+
 
 os.environ['OBJC_DISABLE_INITIALIZE_FORK_SAFETY'] = 'YES'
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -35,35 +38,6 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s',
     stream=sys.stdout
 )
-
-def verify_cache(cached_llm, semantic_cache):
-    # Run a test query that should be cached
-    test_question = "Tell me a joke."
-    
-    start_time = time.time()
-    answer = cached_llm(prompt=test_question, cache_obj=semantic_cache)
-    first_time = time.time() - start_time
-    
-    print(f"First query time: {first_time:.4f}s")
-
-    # Run the same query again - should be faster if cache works
-    start_time = time.time()
-    answer = cached_llm(prompt=test_question, cache_obj=semantic_cache)
-    second_time = time.time() - start_time
-    
-    print(f"Second query time: {second_time:.4f}s")
-    print(f"Speed improvement: {first_time/second_time:.2f}x faster")
-    
-    return second_time < first_time
-
-
-def signal_handler(sig, frame):
-    print("Benchmark interrupted, generating final report...")
-    Cache
-    report_path = cache_analyzer.generate_latest_run_report(log_dir="cache_logs")
-    print(f"Performance report saved to: {report_path}")
-    sys.exit(0)
-
 
 def process_questions_in_parallel(questions: List[str], cached_llm, semantic_cache, logger, max_workers: int = 8):
     """
@@ -136,7 +110,7 @@ def process_questions_in_parallel(questions: List[str], cached_llm, semantic_cac
     
     return results
 
-def send_request_to_cache(question, cached_llm, semantic_cache, CacheLogger):
+def process_request(question, cached_llm, semantic_cache, CacheLogger, use_cache, llm):
     """
     Send a request to the cache and log the response.
     
@@ -152,10 +126,22 @@ def send_request_to_cache(question, cached_llm, semantic_cache, CacheLogger):
     }
     
     start_time = time.time()
-    answer = cached_llm(prompt=question, cache_obj=semantic_cache)
-    response_time = time.time() - start_time
 
-    is_hit = semantic_cache.report.hint_cache_count > pre_stats["hits"]
+    # temporarily bypass cache regulation for testing
+    # use_cache = True
+
+    if use_cache:
+        answer = cached_llm(prompt=question, cache_obj=semantic_cache)
+        is_hit = semantic_cache.report.hint_cache_count > pre_stats["hits"]
+    else:
+        answer = llm.invoke(question)
+        is_hit = False
+        semantic_cache.import_data(
+            questions=[question],
+            answers=[answer],
+        )
+
+    response_time = time.time() - start_time
 
     CacheLogger.log_request(
         query=question,
@@ -163,7 +149,7 @@ def send_request_to_cache(question, cached_llm, semantic_cache, CacheLogger):
         response_time=response_time,
         is_cache_hit=is_hit,
         similarity_score=None,
-        used_cache=True,
+        used_cache=use_cache,
         temperature=None,
         report_metrics=helpers.convert_gptcache_report(semantic_cache)
     )
@@ -172,48 +158,6 @@ def send_request_to_cache(question, cached_llm, semantic_cache, CacheLogger):
     print("Time consuming: {:.2f}s".format(response_time))
     print(f"Answer: {answer}\n")
     print("\033[94m" + "-----------------------------------------------------------" + "\033[0m\n")
-
-def system_cleanup(semantic_cache, data_manager):
-    """
-    Perform system cleanup tasks.
-    """
-    # Explicit cleanup in safe order
-    semantic_cache.flush()
-            
-    # Safely cleanup FAISS index
-    try:
-        if hasattr(data_manager, 'v'):
-            logging.debug("Debug: data_manager.v exists")
-            logging.debug(f"Debug: data_manager.v attributes: {dir(data_manager.v)}")
-            logging.debug(f"Debug: data_manager.v type: {type(data_manager.v)}")
-
-            # Try to access _index and log the result
-            try:
-                index = getattr(data_manager.v, '_index', None)
-                logging.debug(f"Debug: _index value: {index}")
-                data_manager.v.flush()
-            except Exception as index_error:
-                logging.error(f"Error accessing _index: {index_error}")
-                logging.error(traceback.format_exc())
-    except Exception as e:
-        logging.error(f"Warning during FAISS cleanup: {str(e)}")
-        logging.error("Full traceback:")
-        logging.error(traceback.format_exc())
-            
-    # Clean up remaining objects
-    try:
-        del vector_base
-        del data_manager
-    except Exception as e:
-        logging.error(f"Warning during final cleanup: {str(e)}")
-        logging.error("Full traceback:")
-        logging.error(traceback.format_exc())
-
-def embedding_func(prompt, extra_param=None):
-    encoder = SBERT('all-MiniLM-L6-v2')
-    embedding = encoder.to_embeddings(prompt)
-    #print(f"Embedding dimension: {len(embedding)}")
-    return tuple(embedding)
 
 def main():
     try:
@@ -239,49 +183,52 @@ def main():
         vector_base = VectorBase("faiss", **vector_params)
         data_manager = get_data_manager(cache_base, vector_base)
 
-        
-        manager = DatasetManager()
-        manager.load_msmarco(split="train", max_samples=None)
-        manager.set_active_dataset("msmarco_train")
-        questions = manager.get_questions(dataset_name="msmarco_train")
+        # DatasetManager setup
+        #manager = DatasetManager()
+        #manager.load_msmarco(split="train", max_samples=None)
+        #manager.set_active_dataset("msmarco_train")
+        #questions = manager.get_questions(dataset_name="msmarco_train")
 
         test_questions = [
             "What is github? Explain briefly.",
-            "can you explain what GitHub is? Explain briefly.",
-            "can you tell me more about GitHub? Explain briefly.",
-            "what is the purpose of GitHub? Explain briefly.",
-            "Hello",
-            "What is the capital of US?",
-            "Tell me a communist joke",
-            "Give me a short summary of simulated annealing",
-            "What is git cherry pick",
-            "Give me a name suggestion for my dog, he likes peanut butter"
+            #"can you explain what GitHub is? Explain briefly.",
+            #"can you tell me more about GitHub? Explain briefly.",
+            #"what is the purpose of GitHub? Explain briefly.",
+            #"Hello",
+            #"What is the capital of US?",
+            #"Tell me a communist joke",
+            #"Give me a short summary of simulated annealing",
+            #"What is git cherry pick",
+            #"Give me a name suggestion for my dog, he likes peanut butter"
         ]
 
-        semantic_cache = Cache()
-        semantic_cache.init(
-            pre_embedding_func=get_prompt,
-            embedding_func=embedding_func,
-            data_manager=data_manager,
-            similarity_evaluation=evaluation,
-        )
-
-        #semantic_cache.config = Config(similarity_threshold=0.9)
-        llm = custom_llm.localLlama()
-        cached_llm = LangChainLLMs(llm=llm)
+        test_answers = [
+            "Test answer 1",
+            "Test answer 2",
+            "Test answer 3",
+            "Test answer 4",
+            "Test answer 5",
+        ]
 
         CacheLogger = new_cache_logger.CacheLogger()
 
+        smart_cache = SmartCache()
+        smart_cache.init(
+            embedding_func=embedding_func,
+            data_manager=data_manager,
+            similarity_evaluation=evaluation,
+            pre_embedding_func=get_prompt
+        )
+
         try:
             for question in test_questions:
-               send_request_to_cache(question, cached_llm, semantic_cache, CacheLogger) 
-
+                # TODO: implement smart_cache.process_query()
             CacheLogger.close()
             report_path = cache_analyzer.generate_latest_run_report(log_dir="cache_logs")
             print(f"Performance report saved to: {report_path}")
 
         finally:
-           system_cleanup(semantic_cache, data_manager)
+           system_cleanup(semantic_cache, vector_base, data_manager)
 
     except Exception as e:
         logging.error(f"Error in main: {str(e)}")

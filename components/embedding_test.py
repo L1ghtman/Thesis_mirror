@@ -15,6 +15,15 @@ def get_embeddings():
         "can you explain what GitHub is? Explain briefly.",
         "can you tell me more about GitHub? Explain briefly.",
         "what is the purpose of GitHub? Explain briefly.",
+        "What are security assosiations?",
+        "What is the purpose of security associations?",
+        "How to tcp endpoints maintain state info?",
+        "How to maintain state info in tcp endpoints?",
+        "What types of integrity checks are there?",
+        "What do IP datagrams look like in tunnel mode?",
+        "What is ESP?",
+        "What is the purpose of ESP?",
+        "What is the purpose of the ESP protocol?",
     ]
 
     sentence_embeddings = model.encode(questions)

@@ -41,7 +41,8 @@ class localLlama(LLM):
             top_p=1,
             frequency_penalty=0.0,
             presence_penalty=0.0,
-            stop=stop
+            stop=stop,
+            #cache_skip=True,
         )
 
         #print response in red

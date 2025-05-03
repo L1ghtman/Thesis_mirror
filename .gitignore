@@ -6,6 +6,7 @@ sqlite.db
 test.json
 .vscode/
 .DS_Store
+.env
 .venv/
 __pycache__/
 cache_logs/

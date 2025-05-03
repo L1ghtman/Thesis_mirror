@@ -8,6 +8,8 @@ from typing import List, Dict, Any, Optional, Tuple
 from datetime import datetime
 import traceback
 
+pd.set_option('future.no_silent_downcasting', True)
+
 class CachePerformanceAnalyzer:
     """
     Analyzer class for visualizing and reporting on cache performance metrics.
@@ -413,17 +415,17 @@ class CachePerformanceAnalyzer:
             if "used_cache" in df.columns and "cache_hit" in df.columns and "positive_hit" in df.columns:
                 # Positive cache hits
                 mask_positive = (
-                    df["used_cache"].fillna(False) & 
-                    df["cache_hit"].fillna(False) & 
-                    df["positive_hit"].fillna(False)
+                    df["used_cache"].fillna(False).infer_objects(copy=False) & 
+                    df["cache_hit"].fillna(False).infer_objects(copy=False) & 
+                    df["positive_hit"].fillna(False).infer_objects(copy=False)
                 )
                 df.loc[mask_positive, "response_category"] = "Positive Cache Hit"
                 
                 # Negative cache hits - handle None values in positive_hit
                 mask_negative = (
-                    df["used_cache"].fillna(False) & 
-                    df["cache_hit"].fillna(False) & 
-                    (df["positive_hit"] == False)  # Only explicitly False values
+                    df["used_cache"].fillna(False).infer_objects(copy=False) & 
+                    df["cache_hit"].fillna(False).infer_objects(copy=False) & 
+                    (df["positive_hit"] == False).infer_objects(copy=False)  # Only explicitly False values
                 )
                 df.loc[mask_negative, "response_category"] = "Negative Cache Hit"
                 
@@ -446,7 +448,7 @@ class CachePerformanceAnalyzer:
             sns.set_style("whitegrid")
             
             # Box plot
-            ax = sns.boxplot(x="response_category", y="response_time", data=df, palette="Set3")
+            ax = sns.boxplot(x="response_category", y="response_time", hue="response_category", data=df, palette="Set3", legend=False)
             
             # Add individual points
             sns.stripplot(x="response_category", y="response_time", data=df, size=4, color=".3", linewidth=0)

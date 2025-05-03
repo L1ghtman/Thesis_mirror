@@ -28,6 +28,7 @@ class CacheLogger:
             "llm_count": 0, 
             "save_time": 0, 
             "save_count": 0,
+            "llm_direct_calls": 0,
             "average_pre_time": 0, 
             "average_emb_time": 0, 
             "average_search_time": 0, 
@@ -80,8 +81,8 @@ class CacheLogger:
                     response: str,
                     is_cache_hit: bool,
                     response_time: float,
+                    used_cache: bool,
                     similarity_score: Optional[float] = None,
-                    used_cache: bool = True,
                     temperature: Optional[float] = None,
                     report_metrics: Dict[str, Any] = {}):
         
@@ -137,7 +138,7 @@ class CacheLogger:
             "positive_hits": self.metrics["cache_hits"],
             "negative_hits": 0,
             "positive_hit_rate": cache_hit_rate,
-            "llm_direct_calls": 0,
+            "llm_direct_calls": self.metrics["llm_direct_calls"],
             "avg_cache_time": avg_cache_time,
             "avg_llm_time": avg_llm_time,
             "time_saved": (avg_llm_time - avg_cache_time) * self.metrics["cache_hits"] if avg_llm_time and self.metrics["cache_hits"] else 0
