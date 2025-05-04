@@ -21,7 +21,7 @@ from gptcache.embedding import SBERT
 from gptcache.similarity_evaluation import SbertCrossencoderEvaluation
 from gptcache.manager import get_data_manager
 from components.cache_utils import embedding_func, system_cleanup
-from components.smart_cache import SmartCache
+from components.smart_cache import SmartCache, EmbeddingInterceptor
 
 
 os.environ['OBJC_DISABLE_INITIALIZE_FORK_SAFETY'] = 'YES'
@@ -168,6 +168,7 @@ def main():
         )
 
         evaluation = SbertCrossencoderEvaluation()
+        interceptor = EmbeddingInterceptor(original_embedding_func=evaluation)
         #evaluation = custom_sim_eval.CustomSimilarityEvaluation()
 
         vector_params = {
@@ -214,7 +215,7 @@ def main():
 
         smart_cache = SmartCache()
         smart_cache.init(
-            embedding_func=embedding_func,
+            embedding_func=interceptor,
             data_manager=data_manager,
             similarity_evaluation=evaluation,
             pre_embedding_func=get_prompt
@@ -223,6 +224,7 @@ def main():
         try:
             for question in test_questions:
                 # TODO: implement smart_cache.process_query()
+                smart_cache.process_query()
             CacheLogger.close()
             report_path = cache_analyzer.generate_latest_run_report(log_dir="cache_logs")
             print(f"Performance report saved to: {report_path}")
