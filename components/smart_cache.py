@@ -1,10 +1,10 @@
 from components.mini_batch_kmeans import MiniBatchKMeansClustering
-from components.custom_llm import custom_llm
+from components import custom_llm
 from gptcache.core import Cache
 from random import random
 from gptcache.adapter.langchain_models import LangChainLLMs
-from components.new_cache_logger import new_cache_logger
-from numpy import np
+from components import new_cache_logger
+import numpy as np
 import time
 from components.helpers import convert_gptcache_report
 
