@@ -25,6 +25,7 @@ def custom_adapt(llm_handler, cache_data_convert, update_cache_callback, *args, 
     user_top_k = "top_k" in kwargs
     temperature = kwargs.pop("temperature", 0.0)
     chat_cache = kwargs.pop("cache_obj", cache)
+    clusterer = chat_cache.clusterer
     session = kwargs.pop("session", None)
     require_object_store = kwargs.pop("require_object_store", False)
     if require_object_store:
@@ -36,23 +37,9 @@ def custom_adapt(llm_handler, cache_data_convert, update_cache_callback, *args, 
     embedding_data = None
     # you want to retry to send the request to chatgpt when the cache is negative
 
-    print("Using custom adapter!!! Yeeeeeeeeahhhh!!!!!!!!!!!111!!1!!!!")
+    print("\033[91mUsing custom adapter.\033[0m")
 
-    if 0 < temperature < 2:
-        cache_skip_options = [True, False]
-        prob_cache_skip = [0, 1]
-        cache_skip = kwargs.pop(
-            "cache_skip",
-            temperature_softmax(
-                messages=cache_skip_options,
-                scores=prob_cache_skip,
-                temperature=temperature,
-            ),
-        )
-    elif temperature >= 2:
-        cache_skip = kwargs.pop("cache_skip", True)
-    else:  # temperature <= 0
-        cache_skip = kwargs.pop("cache_skip", False)
+
     cache_factor = kwargs.pop("cache_factor", 1.0)
     pre_embedding_res = time_cal(
         chat_cache.pre_embedding_func,
@@ -82,6 +69,45 @@ def custom_adapt(llm_handler, cache_data_convert, update_cache_callback, *args, 
             func_name="embedding",
             report_func=chat_cache.report.embedding,
         )(pre_embedding_data, extra_param=context.get("embedding_func", None))
+    
+    vb_size = chat_cache.data_manager.v.count()
+    print(f"Cache size: {vb_size}")
+
+    print("Got here!")
+    print(f"clusterer: {clusterer}")
+    if clusterer is not None and embedding_data is not None:
+        print("Got here too!")
+        try:
+            clusterer.add_to_buffer(embedding_data)
+            clusterer.process_buffer()
+            cache_size = chat_cache.data_manager.v.count()
+            cache_factor = 1.0 / max(1, np.log2(cache_size+1))
+            cluster_adjustment = clusterer.get_temperature_adjustment(embedding_data)
+            original_temperature = temperature
+            adjusted_temperature = original_temperature * (0.4*cache_factor + 0.6*cluster_adjustment)
+            temperature = max(0.0, min(2.0, adjusted_temperature))
+            print(f"Temp adjustment: {original_temperature:.2f} → {temperature:.2f} " +
+                      f"(cluster: {cluster_adjustment:.2f}, cache: {cache_factor:.2f})")
+            print(". . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .")
+        except Exception as e:
+            print(f"Cluster adjustment error: {e}")
+
+    if 0 < temperature < 2:
+        cache_skip_options = [True, False]
+        prob_cache_skip = [0, 1]
+        cache_skip = kwargs.pop(
+            "cache_skip",
+            temperature_softmax(
+                messages=cache_skip_options,
+                scores=prob_cache_skip,
+                temperature=temperature,
+            ),
+        )
+    elif temperature >= 2:
+        cache_skip = kwargs.pop("cache_skip", True)
+    else:  # temperature <= 0
+        cache_skip = kwargs.pop("cache_skip", False)
+
     if cache_enable and not cache_skip:
         search_data_list = time_cal(
             chat_cache.data_manager.search,
@@ -233,7 +259,7 @@ def custom_adapt(llm_handler, cache_data_convert, update_cache_callback, *args, 
         kwargs["cache_skip"] = cache_skip
         kwargs["cache_factor"] = cache_factor
         kwargs["search_only"] = search_only_flag
-        llm_data = adapt(
+        llm_data = custom_adapt(
             llm_handler, cache_data_convert, update_cache_callback, *args, **kwargs
         )
     else:
@@ -283,6 +309,26 @@ def custom_adapt(llm_handler, cache_data_convert, update_cache_callback, *args, 
             gptcache_log.warning(error_msg)
             #gptcache_log.warning("failed to save the data to cache, error: %s", e)
     return llm_data
+
+
+_input_summarizer = None
+
+
+def _summarize_input(text, text_length):
+    if len(text) <= text_length:
+        return text
+
+    # pylint: disable=import-outside-toplevel
+    from gptcache.processor.context.summarization_context import (
+        SummarizationContextProcess,
+    )
+
+    global _input_summarizer
+    if _input_summarizer is None:
+        _input_summarizer = SummarizationContextProcess()
+    summarization = _input_summarizer.summarize_to_sentence([text], text_length)
+    return summarization
+
 
 def cache_health_check(vectordb, cache_dict):
     """This function checks if the embedding

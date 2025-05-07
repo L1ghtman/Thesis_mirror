@@ -24,8 +24,8 @@ from components.cache_utils import embedding_func, system_cleanup
 from components.smart_cache import SmartCache, EmbeddingInterceptor
 import gptcache.adapter.adapter
 from components.custom_adapter import custom_adapt
+from components.mini_batch_kmeans import MiniBatchKMeansClustering
 
-gptcache.adapter.adapter.adapt = custom_adapt
 
 os.environ['OBJC_DISABLE_INITIALIZE_FORK_SAFETY'] = 'YES'
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -173,19 +173,17 @@ def main():
         evaluation = SbertCrossencoderEvaluation()
         interceptor = EmbeddingInterceptor(original_embedding_func=evaluation)
         #evaluation = custom_sim_eval.CustomSimilarityEvaluation()
-
         vector_params = {
             "dimension": 384,
             "index_type": "IDMap,Flat",
             "metric_type": faiss.METRIC_L2,
             "index_path": os.path.join(CACHE_DIR, "faiss.index"),
         }
-
         cache_base = CacheBase("sqlite",
                                sql_url=f"sqlite:///{os.path.join(CACHE_DIR, 'cache.db')}")
-                               
         vector_base = VectorBase("faiss", **vector_params)
         data_manager = get_data_manager(cache_base, vector_base)
+
 
         # DatasetManager setup
         #manager = DatasetManager()
@@ -195,10 +193,10 @@ def main():
 
         test_questions = [
             "What is github? Explain briefly.",
-            #"can you explain what GitHub is? Explain briefly.",
+            "can you explain what GitHub is? Explain briefly.",
             #"can you tell me more about GitHub? Explain briefly.",
             #"what is the purpose of GitHub? Explain briefly.",
-            #"Hello",
+            "Hello",
             #"What is the capital of US?",
             #"Tell me a communist joke",
             #"Give me a short summary of simulated annealing",
@@ -219,12 +217,15 @@ def main():
         llm = custom_llm.localLlama()
         cached_llm = LangChainLLMs(llm=llm)
 
+        clusterer = MiniBatchKMeansClustering(num_clusters=8)
+
         semantic_cache = Cache()
         semantic_cache.init(
             embedding_func=embedding_func,
             data_manager=data_manager,
             similarity_evaluation=evaluation,
             pre_embedding_func=get_prompt,
+            clusterer=clusterer,
         )
 
         smart_cache = SmartCache()
