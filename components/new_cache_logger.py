@@ -16,6 +16,8 @@ class CacheLogger:
             "pre_process_count": 0,
             "embedding_time": 0, 
             "embedding_count": 0,
+            "clustering_time": 0,
+            "clustering_count": 0,
             "search_time": 0,
             "search_count": 0,
             "data_time": 0, 
@@ -127,7 +129,9 @@ class CacheLogger:
         total_time = sum(self.metrics["cache_response_times"]) + sum(self.metrics["llm_response_times"])
         avg_cache_time = sum(self.metrics["cache_response_times"]) / len(self.metrics["cache_response_times"]) if self.metrics["cache_response_times"] else 0
         avg_llm_time = sum(self.metrics["llm_response_times"]) / len(self.metrics["llm_response_times"]) if self.metrics["llm_response_times"] else 0
-        
+        avg_cluster_time = self.metrics["clustering_time"] / self.metrics["clustering_count"] if self.metrics["clustering_count"] else 0
+        avg_embedding_time = self.metrics["embedding_time"] / self.metrics["embedding_count"] if self.metrics["embedding_count"] else 0
+        avg_search_time = self.metrics["search_time"] / self.metrics["search_count"] if self.metrics["search_count"] else 0
 
         summary = {
             "run_id": self.current_run_id,
@@ -141,6 +145,10 @@ class CacheLogger:
             "llm_direct_calls": self.metrics["llm_direct_calls"],
             "avg_cache_time": avg_cache_time,
             "avg_llm_time": avg_llm_time,
+            "avg_cluster_time": avg_cluster_time,
+            "avg_embedding_time": avg_embedding_time,
+            "avg_search_time": avg_search_time,
+            "total_time": total_time,
             "time_saved": (avg_llm_time - avg_cache_time) * self.metrics["cache_hits"] if avg_llm_time and self.metrics["cache_hits"] else 0
         }
 

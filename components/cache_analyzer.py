@@ -173,7 +173,7 @@ class CachePerformanceAnalyzer:
             # Create a minimal empty dataframe with the expected columns
             return pd.DataFrame(columns=[
                 "timestamp", "query", "event_type", "used_cache", 
-                "cache_hit", "positive_hit", "response_time", 
+                "cache_hit", "positive_hit", "response_time", "clustering_time",
                 "similarity_score", "temperature", "request_num"
             ])
         
@@ -200,7 +200,7 @@ class CachePerformanceAnalyzer:
             # Return empty DataFrame with expected columns
             return pd.DataFrame(columns=[
                 "timestamp", "query", "event_type", "used_cache", 
-                "cache_hit", "positive_hit", "response_time", 
+                "cache_hit", "positive_hit", "response_time", "clustering_time",
                 "similarity_score", "temperature", "request_num"
             ])
     
@@ -233,6 +233,7 @@ class CachePerformanceAnalyzer:
                 "llm_direct_calls": 0,
                 "avg_cache_time": 0,
                 "avg_llm_time": 0,
+                "avg_clustering_time": 0,
                 "cache_hit_rate": 0,
                 "positive_hit_rate": 0,
                 "time_saved": 0
@@ -253,10 +254,12 @@ class CachePerformanceAnalyzer:
             # Get response times
             cache_response_times = df[(df["cache_hit"] == True)]["response_time"].tolist()
             llm_response_times = df[(df["cache_hit"] == False) | (df["used_cache"] == False)]["response_time"].tolist()
+            clustering_times = df["clustering_time"].tolist()
             
             # Calculate averages safely
             avg_cache_time = sum(cache_response_times) / len(cache_response_times) if cache_response_times else 0
             avg_llm_time = sum(llm_response_times) / len(llm_response_times) if llm_response_times else 0
+            avg_clustering_time = sum(clustering_times) / len(clustering_times) if clustering_times else 0
             
             # Calculate rates
             cache_hit_rate = cache_hits / total_requests if total_requests > 0 else 0
@@ -275,6 +278,7 @@ class CachePerformanceAnalyzer:
                 "llm_direct_calls": llm_direct_calls,
                 "avg_cache_time": avg_cache_time,
                 "avg_llm_time": avg_llm_time,
+                "avg_clustering_time": avg_clustering_time,
                 "cache_hit_rate": cache_hit_rate,
                 "positive_hit_rate": positive_hit_rate,
                 "time_saved": time_saved
@@ -294,6 +298,7 @@ class CachePerformanceAnalyzer:
                 "llm_direct_calls": run_data.get("llm_direct_calls", 0),
                 "avg_cache_time": 0,
                 "avg_llm_time": 0,
+                "avg_clustering_time": 0,
                 "cache_hit_rate": 0,
                 "positive_hit_rate": 0,
                 "time_saved": 0
@@ -719,6 +724,7 @@ class CachePerformanceAnalyzer:
             time_saved = summary["time_saved"]
             avg_cache_time = summary["avg_cache_time"]
             avg_llm_time = summary["avg_llm_time"]
+            avg_clustering_time = summary["avg_cluster_time"]
 
             # Speed improvement calculation
             speed_improvement = avg_llm_time / avg_cache_time if avg_cache_time > 0 else 0
@@ -1099,6 +1105,11 @@ class CachePerformanceAnalyzer:
                             <div class="stat-item">
                                 <div class="stat-label">Avg Cache Time</div>
                                 <div class="stat-value">{summary["avg_cache_time"]:.3f}s</div>
+                            </div>
+
+                            <div class="stat-item">
+                                <div class="stat-label">Avg Clustering Time</div>
+                                <div class="stat-value">{summary["avg_cluster_time"]:.3f}s</div>
                             </div>
                         </div>
                     </div>
