@@ -724,7 +724,11 @@ class CachePerformanceAnalyzer:
             time_saved = summary["time_saved"]
             avg_cache_time = summary["avg_cache_time"]
             avg_llm_time = summary["avg_llm_time"]
-            avg_clustering_time = summary["avg_cluster_time"]
+            avg_cluster_time = summary["avg_cluster_time"]
+
+            print("************************")
+            print(f"average clustering time: {summary["avg_cluster_time"]}")
+            print("************************")
 
             # Speed improvement calculation
             speed_improvement = avg_llm_time / avg_cache_time if avg_cache_time > 0 else 0
@@ -1109,7 +1113,7 @@ class CachePerformanceAnalyzer:
 
                             <div class="stat-item">
                                 <div class="stat-label">Avg Clustering Time</div>
-                                <div class="stat-value">{summary["avg_cluster_time"]:.3f}s</div>
+                                <div class="stat-value">{summary["avg_cluster_time"]:.5f}s</div>
                             </div>
                         </div>
                     </div>

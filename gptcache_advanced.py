@@ -20,7 +20,7 @@ from gptcache.adapter.langchain_models import LangChainLLMs
 from gptcache.embedding import SBERT
 from gptcache.similarity_evaluation import SbertCrossencoderEvaluation
 from gptcache.manager import get_data_manager
-from components.cache_utils import embedding_func, system_cleanup
+from components.cache_utils import embedding_func, system_cleanup, temperature_func
 from components.smart_cache import SmartCache, EmbeddingInterceptor
 import gptcache.adapter.adapter
 from components.custom_adapter import custom_adapt
@@ -226,6 +226,7 @@ def main():
             similarity_evaluation=evaluation,
             pre_embedding_func=get_prompt,
             clusterer=clusterer,
+            temperature_func=temperature_func,
         )
 
         smart_cache = SmartCache()

@@ -70,27 +70,35 @@ def custom_adapt(llm_handler, cache_data_convert, update_cache_callback, *args, 
             report_func=chat_cache.report.embedding,
         )(pre_embedding_data, extra_param=context.get("embedding_func", None))
     
-    vb_size = chat_cache.data_manager.v.count()
-    print(f"Cache size: {vb_size}")
+    cache_size = chat_cache.data_manager.v.count()
+    print(f"Cache size: {cache_size}")
 
     print("Got here!")
     print(f"clusterer: {clusterer}")
     if clusterer is not None and embedding_data is not None:
         print("Got here too!")
-        try:
-            clusterer.add_to_buffer(embedding_data)
-            clusterer.process_buffer()
-            cache_size = chat_cache.data_manager.v.count()
-            cache_factor = 1.0 / max(1, np.log2(cache_size+1))
-            cluster_adjustment = clusterer.get_temperature_adjustment(embedding_data)
-            original_temperature = temperature
-            adjusted_temperature = original_temperature * (0.4*cache_factor + 0.6*cluster_adjustment)
-            temperature = max(0.0, min(2.0, adjusted_temperature))
-            print(f"Temp adjustment: {original_temperature:.2f} → {temperature:.2f} " +
-                      f"(cluster: {cluster_adjustment:.2f}, cache: {cache_factor:.2f})")
-            print(". . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .")
-        except Exception as e:
-            print(f"Cluster adjustment error: {e}")
+        #try:
+        #    clusterer.add_to_buffer(embedding_data)
+        #    clusterer.process_buffer()
+        #    cache_size = chat_cache.data_manager.v.count()
+        #    cache_factor = 1.0 / max(1, np.log2(cache_size+1))
+        #    cluster_adjustment = clusterer.get_temperature_adjustment(embedding_data)
+        #    original_temperature = temperature
+        #    adjusted_temperature = original_temperature * (0.4*cache_factor + 0.6*cluster_adjustment)
+        #    temperature = max(0.0, min(2.0, adjusted_temperature))
+        #    print(f"Temp adjustment: {original_temperature:.2f} → {temperature:.2f} " +
+        #              f"(cluster: {cluster_adjustment:.2f}, cache: {cache_factor:.2f})")
+        #    print(". . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .")
+        #except Exception as e:
+        #    print(f"Cluster adjustment error: {e}")
+        
+        temperature = time_cal(
+            chat_cache.temperature_func,
+            func_name="temperature",
+            report_func=chat_cache.report.clustering,
+        )(clusterer, embedding_data, cache_size, temperature)
+
+        
 
     if 0 < temperature < 2:
         cache_skip_options = [True, False]
@@ -107,6 +115,8 @@ def custom_adapt(llm_handler, cache_data_convert, update_cache_callback, *args, 
         cache_skip = kwargs.pop("cache_skip", True)
     else:  # temperature <= 0
         cache_skip = kwargs.pop("cache_skip", False)
+
+    print(f"Cache skip: {cache_skip}")
 
     if cache_enable and not cache_skip:
         search_data_list = time_cal(

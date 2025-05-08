@@ -16,8 +16,8 @@ class CacheLogger:
             "pre_process_count": 0,
             "embedding_time": 0, 
             "embedding_count": 0,
-            "clustering_time": 0,
             "clustering_count": 0,
+            "clustering_time": 0,
             "search_time": 0,
             "search_count": 0,
             "data_time": 0, 
@@ -42,6 +42,7 @@ class CacheLogger:
             "cache_hits": 0,
             "cache_response_times": [],
             "llm_response_times": [],
+            "clustering_times": [],
             "requests": [],
             "summary": {}
         }
@@ -88,8 +89,10 @@ class CacheLogger:
                     temperature: Optional[float] = None,
                     report_metrics: Dict[str, Any] = {}):
         
+        self.metrics["clustering_times"].append(report_metrics.get("clustering_time", 0))
         
-        
+        print(f"cluster times: {self.metrics['clustering_times']}")
+
         if used_cache:
             if is_cache_hit:
                 self.metrics["cache_response_times"].append(response_time)
@@ -129,7 +132,10 @@ class CacheLogger:
         total_time = sum(self.metrics["cache_response_times"]) + sum(self.metrics["llm_response_times"])
         avg_cache_time = sum(self.metrics["cache_response_times"]) / len(self.metrics["cache_response_times"]) if self.metrics["cache_response_times"] else 0
         avg_llm_time = sum(self.metrics["llm_response_times"]) / len(self.metrics["llm_response_times"]) if self.metrics["llm_response_times"] else 0
-        avg_cluster_time = self.metrics["clustering_time"] / self.metrics["clustering_count"] if self.metrics["clustering_count"] else 0
+        avg_cluster_time = sum(self.metrics["clustering_times"]) / len(self.metrics["clustering_times"]) if self.metrics["clustering_times"] else 0
+
+        print(f"avg cluster times: {avg_cluster_time}")
+
         avg_embedding_time = self.metrics["embedding_time"] / self.metrics["embedding_count"] if self.metrics["embedding_count"] else 0
         avg_search_time = self.metrics["search_time"] / self.metrics["search_count"] if self.metrics["search_count"] else 0
 

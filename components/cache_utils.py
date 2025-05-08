@@ -20,12 +20,29 @@ from gptcache.adapter.langchain_models import LangChainLLMs
 from gptcache.embedding import SBERT
 from gptcache.similarity_evaluation import SbertCrossencoderEvaluation
 from gptcache.manager import get_data_manager
+import numpy as np
 
 def embedding_func(prompt, extra_param=None):
     encoder = SBERT('all-MiniLM-L6-v2')
     embedding = encoder.to_embeddings(prompt)
     #print(f"Embedding dimension: {len(embedding)}")
     return tuple(embedding)
+
+def temperature_func(clusterer, embedding_data, cache_size, temperature):
+    """
+    Calculate the temperature based on the clustering and cache size.
+    """
+    clusterer.add_to_buffer(embedding_data)
+    clusterer.process_buffer()
+    cache_factor = 1.0/max(1, np.log2(cache_size+1))
+    cluster_adjustment = clusterer.get_temperature_adjustment(embedding_data)
+    original_temperature = temperature
+    adjusted_temperature = original_temperature * (0.4*cache_factor + 0.6*cluster_adjustment)
+    temperature = max(0.0, min(2.0, adjusted_temperature))
+    print(f"Temp adjustment: {original_temperature:.2f} → {temperature:.2f} " +
+              f"(cluster: {cluster_adjustment:.2f}, cache: {cache_factor:.2f})")
+    print(". . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .")
+    return temperature
 
 def system_cleanup(semantic_cache, vector_base, data_manager):
     """
