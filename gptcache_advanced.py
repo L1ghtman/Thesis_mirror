@@ -21,7 +21,7 @@ from gptcache.embedding import SBERT
 from gptcache.similarity_evaluation import SbertCrossencoderEvaluation
 from gptcache.manager import get_data_manager
 from components.cache_utils import embedding_func, system_cleanup, temperature_func
-from components.smart_cache import SmartCache, EmbeddingInterceptor
+#from components.smart_cache import SmartCache, EmbeddingInterceptor
 import gptcache.adapter.adapter
 from components.custom_adapter import custom_adapt
 from components.mini_batch_kmeans import MiniBatchKMeansClustering
@@ -171,7 +171,7 @@ def main():
         )
 
         evaluation = SbertCrossencoderEvaluation()
-        interceptor = EmbeddingInterceptor(original_embedding_func=evaluation)
+        #interceptor = EmbeddingInterceptor(original_embedding_func=evaluation)
         #evaluation = custom_sim_eval.CustomSimilarityEvaluation()
         vector_params = {
             "dimension": 384,
@@ -229,13 +229,13 @@ def main():
             temperature_func=temperature_func,
         )
 
-        smart_cache = SmartCache()
-        smart_cache.init(
-            embedding_func=interceptor,
-            data_manager=data_manager,
-            similarity_evaluation=evaluation,
-            pre_embedding_func=get_prompt
-        )
+        #smart_cache = SmartCache()
+        #smart_cache.init(
+        #    embedding_func=interceptor,
+        #    data_manager=data_manager,
+        #    similarity_evaluation=evaluation,
+        #    pre_embedding_func=get_prompt
+        #)
 
         try:
             for question in test_questions:

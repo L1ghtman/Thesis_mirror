@@ -47,7 +47,7 @@ class MiniBatchKMeansClustering:
         """Add a vector to the buffer for later batch processing."""
         self.vectors_buffer.append((vector, vector_id))
     
-    def process_buffer(self, min_batch_size=50):
+    def process_buffer(self, min_batch_size=10):
         """Process the buffer when it reaches sufficient size."""
         if len(self.vectors_buffer) >= min_batch_size:
             vectors = [v[0] for v in self.vectors_buffer]
