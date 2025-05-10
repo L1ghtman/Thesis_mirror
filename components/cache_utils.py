@@ -25,7 +25,6 @@ import numpy as np
 def embedding_func(prompt, extra_param=None):
     encoder = SBERT('all-MiniLM-L6-v2')
     embedding = encoder.to_embeddings(prompt)
-    #print(f"Embedding dimension: {len(embedding)}")
     return tuple(embedding)
 
 def temperature_func(clusterer, embedding_data, cache_size, temperature):
