@@ -73,23 +73,45 @@ def custom_adapt(llm_handler, cache_data_convert, update_cache_callback, *args, 
     cache_size = chat_cache.data_manager.v.count()
     print(f"Cache size: {cache_size}")
 
+    print("Got here!")
+    print(f"clusterer: {clusterer}")
+    
+    # Initialize cluster_id to None - this handles the case where clustering fails
+    cluster_id = None
+    
     if clusterer is not None and embedding_data is not None:
-        result = time_cal(
-            chat_cache.temperature_func,
-            func_name="temperature",
-            report_func=chat_cache.report.clustering,
-        )(clusterer, embedding_data, cache_size, temperature)
-        if isinstance(result, tuple) and len(result) == 2:
-            temperature, current_cluster_id = result
-        else:
-            temperature = result
-        context["cluster_id"] = current_cluster_id
-        context["temperature"] = temperature
-        if current_cluster_id is not None:
-            setattr(chat_cache, "last_cluster_id", current_cluster_id)
-            print(f"Stored cluster_id {current_cluster_id} in cache object")
-        setattr(chat_cache, "last_temperature", temperature)
-        print(f"Stored temperature {temperature} in cache object")
+        print("Got here too!")
+        
+        # Get the temperature, and also try to get cluster assignment
+        try:
+            temp_result = time_cal(
+                chat_cache.temperature_func,
+                func_name="temperature",
+                report_func=chat_cache.report.clustering,
+            )(clusterer, embedding_data, cache_size, temperature)
+            
+            # If temperature_func returns a tuple, it might contain (temperature, cluster_id)
+            if isinstance(temp_result, tuple) and len(temp_result) >= 2:
+                temperature, cluster_id = temp_result[0], temp_result[1]
+            else:
+                temperature = temp_result
+                
+                # Try to get cluster ID directly
+                if clusterer.is_fitted and hasattr(clusterer, 'kmeans') and clusterer.kmeans is not None:
+                    query_embedding = np.array(embedding_data).reshape(1, -1)
+                    cluster_id = int(clusterer.kmeans.predict(query_embedding)[0])
+        except Exception as e:
+            print(f"Error in temperature/clustering calculation: {e}")
+            # Keep the original temperature if there's an error
+    
+    # Store cluster ID in context if available
+    if cluster_id is not None:
+        context["cluster_id"] = cluster_id
+        print(f"Storing cluster ID in context: {cluster_id}")
+
+        if not hasattr(chat_cache, "last_context"):
+            chat_cache.last_context = {}
+        chat_cache.last_context["cluster_id"] = cluster_id
 
     if 0 < temperature < 2:
         cache_skip_options = [True, False]
@@ -107,7 +129,7 @@ def custom_adapt(llm_handler, cache_data_convert, update_cache_callback, *args, 
     else:  # temperature <= 0
         cache_skip = kwargs.pop("cache_skip", False)
 
-    #cache_skip = True
+    print(f"Cache skip: {cache_skip}")
 
     if cache_enable and not cache_skip:
         search_data_list = time_cal(
@@ -230,18 +252,6 @@ def custom_adapt(llm_handler, cache_data_convert, update_cache_callback, *args, 
                 report_func=chat_cache.report.post,
             )()
             chat_cache.report.hint_cache()
-
-            if "cluster_id" in context and context["cluster_id"] is not None:
-                current_cluster_id = context["cluster_id"]
-                if not hasattr(return_message, "metadata"):
-                    try:
-                        return_message.metadata = {"cluster_id": current_cluster_id}
-                    except (AttributeError, TypeError):
-                        if isinstance(return_message, str):
-                            print(f"Cache hit response from cluster: {current_cluster_id}")
-                            if not hasattr(chat_cache, "last_cluster_id"):
-                                setattr(chat_cache, "last_cluster_id", current_cluster_id)
-
             cache_whole_data = answers_dict.get(str(return_message))
             if session and cache_whole_data:
                 chat_cache.data_manager.add_session(
@@ -282,24 +292,6 @@ def custom_adapt(llm_handler, cache_data_convert, update_cache_callback, *args, 
         llm_data = time_cal(
             llm_handler, func_name="llm_request", report_func=chat_cache.report.llm
         )(*args, **kwargs)
-
-
-    if cache_enable and "cluster_id" in context and context["cluster_id"] is not None:
-        current_cluster_id = context["cluster_id"]
-        
-        try:
-            # Try to add metadata as attribute to the LLM response
-            if hasattr(llm_data, "metadata"):
-                llm_data.metadata["cluster_id"] = current_cluster_id
-            else:
-                # Store it in chat_cache for later retrieval
-                if not hasattr(chat_cache, "last_cluster_id"):
-                    setattr(chat_cache, "last_cluster_id", current_cluster_id)
-                print(f"LLM response for cluster: {current_cluster_id}")
-        except (AttributeError, TypeError):
-            # If llm_data doesn't support attributes, just log it
-            print(f"LLM response for cluster: {current_cluster_id}")
-
 
     if not llm_data:
         return None
@@ -390,4 +382,3 @@ def cache_health_check(vectordb, cache_dict):
             emb=cache_dict["embedding"],
         )
     return flag
-

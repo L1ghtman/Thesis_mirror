@@ -131,7 +131,7 @@ class CacheLogger:
         for key, value in report_metrics.items():
             self.metrics[key] = value
 
-        self.logger.info(f"{event_type}: query='{query[:50]}...' time={response_time:.4f}s")
+        self.logger.info(f"{event_type}: query='{query[:50]}...' time={response_time:.4f}s cluster_id={cluster_id}")
 
         self._save_metrics()
 

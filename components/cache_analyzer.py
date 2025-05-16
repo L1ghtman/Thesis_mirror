@@ -1399,167 +1399,110 @@ class CachePerformanceAnalyzer:
     def plot_cluster_analysis(self, run_data: Dict[str, Any], save_path: Optional[str] = None) -> plt.Figure:
         """
         Create a visualization of clustering analysis and temperature adjustments.
-    
+        
         Args:
             run_data: The run data dictionary
             save_path: If provided, the plot will be saved to this path
-        
+            
         Returns:
             The matplotlib figure
         """
         try:
             df = self._prepare_run_dataframe(run_data)
-        
+            
             # Check if cluster data exists
-            if 'cluster_id' not in df.columns:
+            if 'cluster_id' not in df.columns or df['cluster_id'].isna().all():
                 # Create a placeholder if no cluster data is available
                 fig, ax = plt.subplots(figsize=(12, 8))
                 ax.text(0.5, 0.5, "No cluster data available for analysis.\nEnsure cluster_id is being logged with requests.", 
-                    horizontalalignment='center', verticalalignment='center',
-                    transform=ax.transAxes, fontsize=14)
-            
+                       horizontalalignment='center', verticalalignment='center',
+                       transform=ax.transAxes, fontsize=14)
+                
                 if save_path:
                     plt.savefig(save_path, bbox_inches='tight')
-            
+                
                 return fig
-        
+            
+            # Filter out rows with missing cluster_id
+            df = df.dropna(subset=['cluster_id'])
+            
+            # Ensure cluster_id is an integer
+            df['cluster_id'] = df['cluster_id'].astype(int)
+            
             # Create a figure with multiple subplots
             fig = plt.figure(figsize=(15, 12))
             gs = plt.GridSpec(2, 2, figure=fig)
-        
+            
             # Plot 1: Request distribution by cluster
             ax1 = fig.add_subplot(gs[0, 0])
             cluster_counts = df['cluster_id'].value_counts().sort_index()
-        
-            # Only plot if we have cluster data
-            if len(cluster_counts) > 0:
-                sns.barplot(x=cluster_counts.index, y=cluster_counts.values, ax=ax1)
-                ax1.set_title('Request Distribution by Cluster', fontsize=12)
-                ax1.set_xlabel('Cluster ID')
-                ax1.set_ylabel('Number of Requests')
-            else:
-                ax1.text(0.5, 0.5, "No cluster data to display", 
-                        horizontalalignment='center', verticalalignment='center',
-                        transform=ax1.transAxes, fontsize=12)
-        
+            sns.barplot(x=cluster_counts.index, y=cluster_counts.values, ax=ax1)
+            ax1.set_title('Request Distribution by Cluster', fontsize=12)
+            ax1.set_xlabel('Cluster ID')
+            ax1.set_ylabel('Number of Requests')
+            
             # Plot 2: Cache hit rate by cluster
             ax2 = fig.add_subplot(gs[0, 1])
             hit_rates = []
             cluster_ids = []
-        
-            for cluster_id, group in df.groupby('cluster_id'):
-                if group.shape[0] > 0:  # Only process groups with data
-                    hits = group[group['event_type'].str.contains('HIT', na=False)].shape[0]
-                    hit_rate = hits / group.shape[0]
-                    hit_rates.append(hit_rate)
-                    cluster_ids.append(cluster_id)
-        
-            if len(cluster_ids) > 0:
-                sns.barplot(x=cluster_ids, y=hit_rates, ax=ax2)
-                ax2.set_title('Cache Hit Rate by Cluster', fontsize=12)
-                ax2.set_xlabel('Cluster ID')
-                ax2.set_ylabel('Hit Rate')
-                ax2.set_ylim([0, 1])
             
-                # Add line for overall hit rate
-                overall_hit_rate = df[df['event_type'].str.contains('HIT', na=False)].shape[0] / df.shape[0] if df.shape[0] > 0 else 0
-                ax2.axhline(y=overall_hit_rate, color='r', linestyle='--', 
-                            label=f'Overall: {overall_hit_rate:.2f}')
-                ax2.legend()
-            else:
-                ax2.text(0.5, 0.5, "No data to calculate hit rates", 
-                        horizontalalignment='center', verticalalignment='center',
-                        transform=ax2.transAxes, fontsize=12)
-        
+            for cluster_id, group in df.groupby('cluster_id'):
+                hits = group[group['event_type'].str.contains('HIT', na=False)].shape[0]
+                hit_rate = hits / group.shape[0] if group.shape[0] > 0 else 0
+                hit_rates.append(hit_rate)
+                cluster_ids.append(cluster_id)
+            
+            sns.barplot(x=cluster_ids, y=hit_rates, ax=ax2)
+            ax2.set_title('Cache Hit Rate by Cluster', fontsize=12)
+            ax2.set_xlabel('Cluster ID')
+            ax2.set_ylabel('Hit Rate')
+            ax2.set_ylim([0, 1])
+            
+            # Add line for overall hit rate
+            overall_hit_rate = df[df['event_type'].str.contains('HIT', na=False)].shape[0] / df.shape[0] if df.shape[0] > 0 else 0
+            ax2.axhline(y=overall_hit_rate, color='r', linestyle='--', 
+                        label=f'Overall: {overall_hit_rate:.2f}')
+            ax2.legend()
+            
             # Plot 3: Temperature distribution by cluster (if available)
             ax3 = fig.add_subplot(gs[1, 0])
-        
-            # Only plot temperature data if it exists and has non-null values
-            if 'temperature' in df.columns and df['temperature'].notna().any():
-                # Filter out rows without temperature data
-                temp_df = df[df['temperature'].notna()]
-            
-                # Only plot if we have data for at least one cluster
-                if len(temp_df) > 0 and 'cluster_id' in temp_df.columns:
-                    # Get unique clusters that have temperature data
-                    clusters_with_temp = temp_df['cluster_id'].unique()
-                
-                    if len(clusters_with_temp) > 0:
-                        # Filter the dataframe to only include clusters with temperature data
-                        plot_df = temp_df[temp_df['cluster_id'].isin(clusters_with_temp)]
-                    
-                        # Create the boxplot
-                        sns.boxplot(x='cluster_id', y='temperature', data=plot_df, ax=ax3)
-                        ax3.set_title('Temperature Distribution by Cluster', fontsize=12)
-                        ax3.set_xlabel('Cluster ID')
-                        ax3.set_ylabel('Temperature')
-                    else:
-                        ax3.text(0.5, 0.5, "No temperature data per cluster", 
-                                horizontalalignment='center', verticalalignment='center',
-                                transform=ax3.transAxes, fontsize=12)
-                else:
-                    ax3.text(0.5, 0.5, "No temperature data available", 
-                            horizontalalignment='center', verticalalignment='center',
-                            transform=ax3.transAxes, fontsize=12)
+            if 'temperature' in df.columns and not df['temperature'].isna().all():
+                sns.boxplot(x='cluster_id', y='temperature', data=df, ax=ax3)
+                ax3.set_title('Temperature Distribution by Cluster', fontsize=12)
+                ax3.set_xlabel('Cluster ID')
+                ax3.set_ylabel('Temperature')
             else:
                 ax3.text(0.5, 0.5, "No temperature data available", 
                         horizontalalignment='center', verticalalignment='center',
                         transform=ax3.transAxes, fontsize=12)
-        
+            
             # Plot 4: Response time by cluster
             ax4 = fig.add_subplot(gs[1, 1])
-        
-            # Only plot if we have response time data
-            if 'response_time' in df.columns and df['response_time'].notna().any():
-                # Filter out rows without response time data
-                rt_df = df[df['response_time'].notna()]
+            sns.boxplot(x='cluster_id', y='response_time', data=df, ax=ax4)
+            ax4.set_title('Response Time by Cluster', fontsize=12)
+            ax4.set_xlabel('Cluster ID')
+            ax4.set_ylabel('Response Time (s)')
             
-                if len(rt_df) > 0 and 'cluster_id' in rt_df.columns:
-                    # Get unique clusters that have response time data
-                    clusters_with_rt = rt_df['cluster_id'].unique()
-                
-                    if len(clusters_with_rt) > 0:
-                        # Filter the dataframe to only include clusters with response time data
-                        plot_df = rt_df[rt_df['cluster_id'].isin(clusters_with_rt)]
-                    
-                        # Create the boxplot
-                        sns.boxplot(x='cluster_id', y='response_time', data=plot_df, ax=ax4)
-                        ax4.set_title('Response Time by Cluster', fontsize=12)
-                        ax4.set_xlabel('Cluster ID')
-                        ax4.set_ylabel('Response Time (s)')
-                    else:
-                        ax4.text(0.5, 0.5, "No response time data per cluster", 
-                                horizontalalignment='center', verticalalignment='center',
-                                transform=ax4.transAxes, fontsize=12)
-                else:
-                    ax4.text(0.5, 0.5, "No response time data available", 
-                            horizontalalignment='center', verticalalignment='center',
-                            transform=ax4.transAxes, fontsize=12)
-            else:
-                ax4.text(0.5, 0.5, "No response time data available", 
-                        horizontalalignment='center', verticalalignment='center',
-                        transform=ax4.transAxes, fontsize=12)
-        
             plt.tight_layout()
-        
+            
             if save_path:
                 plt.savefig(save_path, bbox_inches='tight')
-        
+            
             return fig
-    
+        
         except Exception as e:
             print(f"Error creating cluster analysis: {e}")
             traceback.print_exc()
-        
+            
             # Create error figure
             fig, ax = plt.subplots(figsize=(12, 8))
             ax.text(0.5, 0.5, f"Error creating cluster analysis: {e}", 
-                horizontalalignment='center', verticalalignment='center',
-                transform=ax.transAxes, fontsize=14)
-        
+                   horizontalalignment='center', verticalalignment='center',
+                   transform=ax.transAxes, fontsize=14)
+            
             if save_path:
                 plt.savefig(save_path, bbox_inches='tight')
-        
+            
             return fig
 
 # Helper function to generate a report for the latest run

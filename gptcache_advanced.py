@@ -24,6 +24,7 @@ from components.cache_utils import embedding_func, system_cleanup, temperature_f
 #from components.smart_cache import SmartCache, EmbeddingInterceptor
 import gptcache.adapter.adapter
 from components.custom_adapter import custom_adapt
+from components.cluster_aware_cache import ClusterAwareCache
 from components.mini_batch_kmeans import MiniBatchKMeansClustering
 
 
@@ -57,18 +58,26 @@ def process_request(question, cached_llm, semantic_cache, CacheLogger, use_cache
     }
     
     start_time = time.time()
+    cluster_id = None
+
+    tracking_context = {}
 
     answer = cached_llm(prompt=question, cache_obj=semantic_cache)
     is_hit = semantic_cache.report.hint_cache_count > pre_stats["hits"]
 
-    cluster_id = getattr(semantic_cache, "last_cluster_id", None)
+    #cluster_id = getattr(semantic_cache, "last_cluster_id", None)
     temperature = getattr(semantic_cache, "last_temperature", None)
 
-    report_metrics = helpers.convert_gptcache_report(semantic_cache)
-    #report_metrics["semantic_cache"] = semantic_cache
+    if hasattr(semantic_cache, 'last_context') and semantic_cache.last_context:
+        cluster_id = semantic_cache.last_context.get('cluster_id')
+        
+    if 'cluster_id' in tracking_context:
+        cluster_id = tracking_context['cluster_id']
 
     response_time = time.time() - start_time
 
+    report_metrics = helpers.convert_gptcache_report(semantic_cache)
+    
     CacheLogger.log_request(
         query=question,
         response=answer,
@@ -139,9 +148,10 @@ def main():
         llm = custom_llm.localLlama()
         cached_llm = LangChainLLMs(llm=llm)
 
-        clusterer = MiniBatchKMeansClustering(num_clusters=8)
+        clusterer = MiniBatchKMeansClustering(max_clusters=8)
 
-        semantic_cache = Cache()
+        #semantic_cache = Cache()
+        semantic_cache = ClusterAwareCache()
         semantic_cache.init(
             embedding_func=embedding_func,
             data_manager=data_manager,
