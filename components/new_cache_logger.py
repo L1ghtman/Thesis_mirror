@@ -107,6 +107,10 @@ class CacheLogger:
             self.metrics["llm_response_times"].append(response_time)
             event_type = "LLM_DIRECT_CALL"
 
+        if cluster_id is None and report_metrics.get("semantic_cache") is not None:
+            if hasattr(report_metrics["semantic_cache"], "last_cluster_id"):
+                cluster_id = report_metrics["semantic_cache"].last_cluster_id
+
         request_data = {
             "timestamp": datetime.now().isoformat(),
             "query": query,
@@ -120,7 +124,8 @@ class CacheLogger:
 
         if cluster_id is not None:
             request_data["cluster_id"] = cluster_id
- 
+            print(f"Logging request with cluster_id: {cluster_id}")        
+
         self.metrics["requests"].append(request_data)
 
         for key, value in report_metrics.items():

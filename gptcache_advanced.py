@@ -58,19 +58,14 @@ def process_request(question, cached_llm, semantic_cache, CacheLogger, use_cache
     
     start_time = time.time()
 
-    # temporarily bypass cache regulation for testing
-    # use_cache = True
+    answer = cached_llm(prompt=question, cache_obj=semantic_cache)
+    is_hit = semantic_cache.report.hint_cache_count > pre_stats["hits"]
 
-    if use_cache:
-        answer = cached_llm(prompt=question, cache_obj=semantic_cache)
-        is_hit = semantic_cache.report.hint_cache_count > pre_stats["hits"]
-    else:
-        answer = llm.invoke(question)
-        is_hit = False
-        semantic_cache.import_data(
-            questions=[question],
-            answers=[answer],
-        )
+    cluster_id = getattr(semantic_cache, "last_cluster_id", None)
+    temperature = getattr(semantic_cache, "last_temperature", None)
+
+    report_metrics = helpers.convert_gptcache_report(semantic_cache)
+    #report_metrics["semantic_cache"] = semantic_cache
 
     response_time = time.time() - start_time
 
@@ -81,14 +76,16 @@ def process_request(question, cached_llm, semantic_cache, CacheLogger, use_cache
         is_cache_hit=is_hit,
         similarity_score=None,
         used_cache=use_cache,
-        temperature=None,
-        report_metrics=helpers.convert_gptcache_report(semantic_cache)
+        temperature=temperature,
+        cluster_id=cluster_id,
+        report_metrics=report_metrics
     )
 
     print(f"Question: {question}")
     print("Time consuming: {:.2f}s".format(response_time))
     print(f"Answer: {answer}\n")
     print("\033[94m" + "-----------------------------------------------------------" + "\033[0m\n")
+
 
 def main():
     try:
@@ -111,10 +108,10 @@ def main():
         data_manager = get_data_manager(cache_base, vector_base)
 
         # DatasetManager setup
-        #manager = DatasetManager()
-        #manager.load_msmarco(split="train", max_samples=None)
-        #manager.set_active_dataset("msmarco_train")
-        #questions = manager.get_questions(dataset_name="msmarco_train")
+        manager = DatasetManager()
+        manager.load_msmarco(split="train", max_samples=20)
+        manager.set_active_dataset("msmarco_train")
+        questions = manager.get_questions(dataset_name="msmarco_train")
 
         test_questions = [
             "What is github? Explain briefly.",
@@ -155,7 +152,7 @@ def main():
         )
 
         try:
-            for question in test_questions:
+            for question in questions:
                 process_request(question, cached_llm, semantic_cache, CacheLogger, use_cache=True, llm=llm)
             CacheLogger.close()
             report_path = cache_analyzer.generate_latest_run_report(log_dir="cache_logs")

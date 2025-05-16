@@ -30,18 +30,33 @@ def embedding_func(prompt, extra_param=None):
 def temperature_func(clusterer, embedding_data, cache_size, temperature):
     """
     Calculate the temperature based on the clustering and cache size.
+
+    Returns:
+        tuple: (adjusted_temperature, cluster_id)
     """
+    cluster_id = None
     clusterer.add_to_buffer(embedding_data)
-    clusterer.process_buffer()
+    fitted = clusterer.process_buffer()
+
+    print("--------------------------------------")
+    print(f"Clusterer fitted: {fitted}")
+    print("--------------------------------------")
+
+    if clusterer.is_fitted:
+        # Flatten the embedding data
+        print("got here!!!")
+        embedding_array = np.array(embedding_data).reshape(1, -1)
+        cluster_id = int(clusterer.kmeans.predict(embedding_array)[0])
+
     cache_factor = 1.0/max(1, np.log2(cache_size+1))
     cluster_adjustment = clusterer.get_temperature_adjustment(embedding_data)
     original_temperature = temperature
     adjusted_temperature = original_temperature * (0.4*cache_factor + 0.6*cluster_adjustment)
     temperature = max(0.0, min(2.0, adjusted_temperature))
     print(f"Temp adjustment: {original_temperature:.2f} → {temperature:.2f} " +
-              f"(cluster: {cluster_adjustment:.2f}, cache: {cache_factor:.2f})")
+              f"(cluster: {cluster_adjustment:.2f}, cache: {cache_factor:.2f}, cluster_id: {cluster_id})")
     print(". . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .")
-    return temperature
+    return temperature, cluster_id
 
 def system_cleanup(semantic_cache, vector_base, data_manager):
     """
