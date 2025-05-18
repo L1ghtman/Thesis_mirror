@@ -73,15 +73,10 @@ def custom_adapt(llm_handler, cache_data_convert, update_cache_callback, *args, 
     cache_size = chat_cache.data_manager.v.count()
     print(f"Cache size: {cache_size}")
 
-    print("Got here!")
-    print(f"clusterer: {clusterer}")
-    
     # Initialize cluster_id to None - this handles the case where clustering fails
     cluster_id = None
     
     if clusterer is not None and embedding_data is not None:
-        print("Got here too!")
-        
         # Get the temperature, and also try to get cluster assignment
         try:
             temp_result = time_cal(
@@ -102,16 +97,21 @@ def custom_adapt(llm_handler, cache_data_convert, update_cache_callback, *args, 
                     cluster_id = int(clusterer.kmeans.predict(query_embedding)[0])
         except Exception as e:
             print(f"Error in temperature/clustering calculation: {e}")
-            # Keep the original temperature if there's an error
     
+    if not hasattr(chat_cache, "last_context"):
+        chat_cache.last_context = {}
+
     # Store cluster ID in context if available
     if cluster_id is not None:
         context["cluster_id"] = cluster_id
+        chat_cache.last_context["cluster_id"] = cluster_id
         print(f"Storing cluster ID in context: {cluster_id}")
 
-        if not hasattr(chat_cache, "last_context"):
-            chat_cache.last_context = {}
-        chat_cache.last_context["cluster_id"] = cluster_id
+    context["temperature"] = temperature
+    chat_cache.last_context["temperature"] = temperature
+    print(f"Storing temperature in context: {temperature}")
+
+    
 
     if 0 < temperature < 2:
         cache_skip_options = [True, False]
@@ -253,6 +253,13 @@ def custom_adapt(llm_handler, cache_data_convert, update_cache_callback, *args, 
             )()
             chat_cache.report.hint_cache()
             cache_whole_data = answers_dict.get(str(return_message))
+
+            if cache_whole_data:
+                similarity_score = cache_whole_data[0]
+                print(f"Cache hit with similarity score: {similarity_score}")
+                context["similarity_score"] = similarity_score
+                chat_cache.last_context["similarity_score"] = similarity_score
+
             if session and cache_whole_data:
                 chat_cache.data_manager.add_session(
                     cache_whole_data[2], session.name, pre_embedding_data

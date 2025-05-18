@@ -66,13 +66,21 @@ def process_request(question, cached_llm, semantic_cache, CacheLogger, use_cache
     is_hit = semantic_cache.report.hint_cache_count > pre_stats["hits"]
 
     #cluster_id = getattr(semantic_cache, "last_cluster_id", None)
-    temperature = getattr(semantic_cache, "last_temperature", None)
+    #temperature = getattr(semantic_cache, "last_temperature", None)
 
     if hasattr(semantic_cache, 'last_context') and semantic_cache.last_context:
         cluster_id = semantic_cache.last_context.get('cluster_id')
+        temperature = semantic_cache.last_context.get('temperature')
+        similarity_score = semantic_cache.last_context.get('similarity_score')
+
+    print(f"temperature: {temperature}")
         
     if 'cluster_id' in tracking_context:
         cluster_id = tracking_context['cluster_id']
+    if 'temperature' in tracking_context:
+        temperature = tracking_context['temperature']
+    if 'similarity_score' in tracking_context:
+        similarity_score = tracking_context['similarity_score']
 
     response_time = time.time() - start_time
 
@@ -83,7 +91,7 @@ def process_request(question, cached_llm, semantic_cache, CacheLogger, use_cache
         response=answer,
         response_time=response_time,
         is_cache_hit=is_hit,
-        similarity_score=None,
+        similarity_score=similarity_score,
         used_cache=use_cache,
         temperature=temperature,
         cluster_id=cluster_id,
@@ -118,9 +126,21 @@ def main():
 
         # DatasetManager setup
         manager = DatasetManager()
-        manager.load_msmarco(split="train", max_samples=20)
-        manager.set_active_dataset("msmarco_train")
-        questions = manager.get_questions(dataset_name="msmarco_train")
+        #manager.load_msmarco(split="train", max_samples=3)
+        #manager.set_active_dataset("msmarco_train")
+        #questions = manager.get_questions(dataset_name="msmarco_train")
+
+        manager.load_from_file(
+            file_path="dataset_cache/customer_qa.json",
+            dataset_name="customer_qa",
+            )
+        manager.set_active_dataset("customer_qa")
+        questions = manager.get_questions(dataset_name="customer_qa")
+
+        partial_questions = []
+
+        for q in questions[:500]:
+            partial_questions.append(q["question"])
 
         test_questions = [
             "What is github? Explain briefly.",
@@ -162,7 +182,8 @@ def main():
         )
 
         try:
-            for question in questions:
+            for question in partial_questions:
+                print(f"Processing question: {question}")
                 process_request(question, cached_llm, semantic_cache, CacheLogger, use_cache=True, llm=llm)
             CacheLogger.close()
             report_path = cache_analyzer.generate_latest_run_report(log_dir="cache_logs")
