@@ -84,6 +84,8 @@ def custom_adapt(llm_handler, cache_data_convert, update_cache_callback, *args, 
                 func_name="temperature",
                 report_func=chat_cache.report.clustering,
             )(clusterer, embedding_data, cache_size, temperature)
+
+            print(f"Temperature result: {temp_result}")
             
             # If temperature_func returns a tuple, it might contain (temperature, cluster_id)
             if isinstance(temp_result, tuple) and len(temp_result) >= 2:
