@@ -73,6 +73,11 @@ def custom_adapt(llm_handler, cache_data_convert, update_cache_callback, *args, 
     cache_size = chat_cache.data_manager.v.count()
     print(f"Cache size: {cache_size}")
 
+    # Set base temperature inverse to overall cache size
+    if cache_size > 0:
+        temperature = 2.0 / cache_size
+    print(f"Base temperature: {temperature}")
+
     # Initialize cluster_id to None - this handles the case where clustering fails
     cluster_id = None
     

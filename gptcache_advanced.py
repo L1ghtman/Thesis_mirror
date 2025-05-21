@@ -5,15 +5,15 @@ import logging
 from components import helpers, custom_llm, custom_sim_eval, new_cache_logger, cache_analyzer
 import sys
 import traceback
-import signal
+#import signal
 import faiss
 import multiprocessing
 from components.dataset_manager import DatasetManager, create_default_manager
-import asyncio
-import concurrent.futures
-from typing import List, Dict, Any
-from gptcache import Config
-from gptcache.core import Cache
+#import asyncio
+#import concurrent.futures
+#from typing import List, Dict, Any
+#from gptcache import Config
+#from gptcache.core import Cache
 from gptcache.processor.pre import get_prompt
 from gptcache.manager import CacheBase, VectorBase
 from gptcache.adapter.langchain_models import LangChainLLMs
@@ -22,8 +22,8 @@ from gptcache.similarity_evaluation import SbertCrossencoderEvaluation
 from gptcache.manager import get_data_manager
 from components.cache_utils import embedding_func, system_cleanup, temperature_func
 #from components.smart_cache import SmartCache, EmbeddingInterceptor
-import gptcache.adapter.adapter
-from components.custom_adapter import custom_adapt
+#import gptcache.adapter.adapter
+#from components.custom_adapter import custom_adapt
 from components.cluster_aware_cache import ClusterAwareCache
 from components.mini_batch_kmeans import MiniBatchKMeansClustering
 
@@ -139,7 +139,7 @@ def main():
 
         partial_questions = []
 
-        for q in questions[:500]:
+        for q in questions[:20]:
             partial_questions.append(q["question"])
 
         test_questions = [
