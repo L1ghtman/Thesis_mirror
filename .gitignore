@@ -11,6 +11,7 @@ test.json
 __pycache__/
 cache_logs/
 cache_reports/
+remote_logs/
 remote_reports/
 debug.log
 persistent_cache/
