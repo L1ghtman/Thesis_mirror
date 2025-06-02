@@ -18,6 +18,8 @@ class CacheLogger:
             "embedding_count": 0,
             "clustering_count": 0,
             "clustering_time": 0,
+            "temperature_time": 0,
+            "temperature_count": 0,
             "search_time": 0,
             "search_count": 0,
             "data_time": 0, 
@@ -43,6 +45,7 @@ class CacheLogger:
             "cache_response_times": [],
             "llm_response_times": [],
             "clustering_times": [],
+            "temperature_times": [],
             "requests": [],
             "summary": {}
         }
@@ -90,9 +93,11 @@ class CacheLogger:
                     cluster_id: Optional[int] = None,
                     report_metrics: Dict[str, Any] = {}):
         
-        self.metrics["clustering_times"].append(report_metrics.get("clustering_time", 0))
-        
-        print(f"cluster times: {self.metrics['clustering_times']}")
+        #self.metrics["clustering_times"].append(report_metrics.get("clustering_time", 0))
+        self.metrics["temperature_times"].append(report_metrics.get("temperature_time", 0))
+
+        #print(f"cluster times: {self.metrics['clustering_times']}")
+        print(f"temperature times: {self.metrics['clustering_times']}")
 
         if used_cache:
             if is_cache_hit:
@@ -122,16 +127,16 @@ class CacheLogger:
             "temperature": temperature
         }
 
-        if cluster_id is not None:
-            request_data["cluster_id"] = cluster_id
-            print(f"Logging request with cluster_id: {cluster_id}")        
+        #if cluster_id is not None:
+        #    request_data["cluster_id"] = cluster_id
+        #    print(f"Logging request with cluster_id: {cluster_id}")        
 
         self.metrics["requests"].append(request_data)
 
         for key, value in report_metrics.items():
             self.metrics[key] = value
 
-        self.logger.info(f"{event_type}: query='{query[:50]}...' time={response_time:.4f}s cluster_id={cluster_id}")
+        #self.logger.info(f"{event_type}: query='{query[:50]}...' time={response_time:.4f}s cluster_id={cluster_id}")
 
         self._save_metrics()
 
@@ -141,9 +146,11 @@ class CacheLogger:
         total_time = sum(self.metrics["cache_response_times"]) + sum(self.metrics["llm_response_times"])
         avg_cache_time = sum(self.metrics["cache_response_times"]) / len(self.metrics["cache_response_times"]) if self.metrics["cache_response_times"] else 0
         avg_llm_time = sum(self.metrics["llm_response_times"]) / len(self.metrics["llm_response_times"]) if self.metrics["llm_response_times"] else 0
-        avg_cluster_time = sum(self.metrics["clustering_times"]) / len(self.metrics["clustering_times"]) if self.metrics["clustering_times"] else 0
+        #avg_cluster_time = sum(self.metrics["clustering_times"]) / len(self.metrics["clustering_times"]) if self.metrics["clustering_times"] else 0
+        avg_temperature_time = sum(self.metrics["temperature_times"]) / len(self.metrics["temperature_times"]) if self.metrics["temperature_times"] else 0
 
-        print(f"avg cluster times: {avg_cluster_time}")
+        #print(f"avg cluster times: {avg_cluster_time}")
+        print(f"avg temperature times: {avg_temperature_time}")
 
         avg_embedding_time = self.metrics["embedding_time"] / self.metrics["embedding_count"] if self.metrics["embedding_count"] else 0
         avg_search_time = self.metrics["search_time"] / self.metrics["search_count"] if self.metrics["search_count"] else 0
@@ -160,7 +167,8 @@ class CacheLogger:
             "llm_direct_calls": self.metrics["llm_direct_calls"],
             "avg_cache_time": avg_cache_time,
             "avg_llm_time": avg_llm_time,
-            "avg_cluster_time": avg_cluster_time,
+            #"avg_cluster_time": avg_cluster_time,
+            "avg_temperature_time": avg_temperature_time,
             "avg_embedding_time": avg_embedding_time,
             "avg_search_time": avg_search_time,
             "total_time": total_time,

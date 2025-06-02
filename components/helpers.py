@@ -27,20 +27,6 @@ def prompt_format(prompt: str, first_call: bool) -> Tuple[str, bool]:
 def convert_gptcache_report(cache_obj, log_dir="cache_logs"):
     """Convert GPTCache report to format compatible with cache_analyzer"""
     report = cache_obj.report
-    
-    # Basic metrics from the report
-    #metrics = {
-    #    "start_time": datetime.now().isoformat(),
-    #    "total_requests": report.op_pre.count,
-    #    "cache_hits": report.hint_cache_count,
-    #    "cache_misses": report.op_llm.count,
-    #    "positive_hits": report.hint_cache_count,  # Simplified assumption
-    #    "negative_hits": 0,  # GPTCache doesn't track this directly
-    #    "llm_direct_calls": 0,  # Would need custom tracking
-    #    "cache_response_times": [],
-    #    "llm_response_times": [],
-    #    "requests": []  # This needs request-level data that GPTCache doesn't track
-    #}
 
     full_metrics = {
         "pre_process_time": report.op_pre.total_time,
@@ -49,6 +35,8 @@ def convert_gptcache_report(cache_obj, log_dir="cache_logs"):
         "embedding_count": report.op_embedding.count,
         "clustering_time": report.op_clustering.total_time,
         "clustering_count": report.op_clustering.count,
+        "temperature_time": report.op_temperature.total_time,
+        "temperature_count": report.op_temperature.count,
         "search_time": report.op_search.total_time,
         "search_count": report.op_search.count,
         "data_time": report.op_data.total_time,

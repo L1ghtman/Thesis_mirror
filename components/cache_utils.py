@@ -2,13 +2,14 @@ import os
 import warnings
 import time
 import logging
-from components import helpers, custom_llm, custom_sim_eval, new_cache_logger, cache_analyzer
+from components import cache_analyzer
 import sys
 import traceback
 import signal
 import faiss
 import multiprocessing
 from components.dataset_manager import DatasetManager, create_default_manager
+from components.magnitude_based_estimator import MagnitudeCache
 import asyncio
 import concurrent.futures
 from typing import List, Dict, Any
@@ -21,6 +22,7 @@ from gptcache.embedding import SBERT
 from gptcache.similarity_evaluation import SbertCrossencoderEvaluation
 from gptcache.manager import get_data_manager
 import numpy as np
+
 
 def embedding_func(prompt, extra_param=None):
     encoder = SBERT('all-MiniLM-L6-v2')
@@ -113,6 +115,12 @@ def temperature_func(clusterer, embedding_data, cache_size, temperature):
         return temperature, cluster_id
     else:
         return temperature
+
+def magnitude_temperature_func(magnitude_cache, embedding):
+    """
+    Calculate the temperature based on embedding magnitude.
+    """
+    return magnitude_cache.get_temperature(embedding) 
 
 def system_cleanup(semantic_cache, vector_base, data_manager):
     """
