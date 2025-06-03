@@ -1425,67 +1425,71 @@ class CachePerformanceAnalyzer:
     def plot_temperature_analysis(self, run_data: Dict[str, Any], save_path: Optional[str] = None) -> plt.Figure:
         """
         Create visualizations analyzing temperature performance and its relationship to cache behavior.
-
+        
         Args:
             run_data: The run data dictionary
             save_path: If provided, the plot will be saved to this path
-
+            
         Returns:
             The matplotlib figure
         """
         try:
             df = self._prepare_run_dataframe(run_data)
-
+            
             # Check if we have temperature-related data
             has_temp_data = 'temperature' in df.columns and not df['temperature'].isna().all()
             has_temp_time = 'temperature_time' in df.columns and not df['temperature_time'].isna().all()
-
+            
             if not has_temp_data and not has_temp_time:
                 # Create a placeholder if no temperature data is available
                 fig, ax = plt.subplots(figsize=(12, 8))
                 ax.text(0.5, 0.5, "No temperature data available for analysis.\nEnsure temperature and temperature_time are being logged with requests.", 
                        horizontalalignment='center', verticalalignment='center',
                        transform=ax.transAxes, fontsize=14)
-
+                
                 if save_path:
                     plt.savefig(save_path, bbox_inches='tight')
-
+                
                 return fig
-
+            
             # Create a figure with multiple subplots
             fig = plt.figure(figsize=(16, 12))
             gs = plt.GridSpec(2, 2, figure=fig, hspace=0.3, wspace=0.3)
-
+            
             # Calculate cumulative cache size (proxy for actual cache size)
             df['cache_size_proxy'] = range(1, len(df) + 1)
-
+            
             # Plot 1: Temperature calculation time vs cache size
             ax1 = fig.add_subplot(gs[0, 0])
-            if has_temp_time:
-                # Filter out zero or null temperature times for better visualization
-                temp_time_df = df[df['temperature_time'].notna() & (df['temperature_time'] > 0)].copy()
-
-                if len(temp_time_df) > 0:
+            
+            # Extract temperature times from the aggregate metrics
+            temp_times = run_data.get("temperature_times", [])
+            
+            if temp_times and len(temp_times) > 0:
+                # Filter out zeros and create cache size proxy
+                valid_temp_times = [t for t in temp_times if t > 0]
+                
+                if len(valid_temp_times) > 0:
+                    cache_sizes = list(range(1, len(valid_temp_times) + 1))
+                    
                     # Create scatter plot
-                    scatter = ax1.scatter(temp_time_df['cache_size_proxy'], 
-                                        temp_time_df['temperature_time'],
-                                        alpha=0.6, s=30, c='purple')
-
+                    scatter = ax1.scatter(cache_sizes, valid_temp_times, alpha=0.6, s=30, c='purple')
+                    
                     # Add trend line
-                    if len(temp_time_df) > 1:
-                        z = np.polyfit(temp_time_df['cache_size_proxy'], temp_time_df['temperature_time'], 1)
+                    if len(valid_temp_times) > 1:
+                        z = np.polyfit(cache_sizes, valid_temp_times, 1)
                         p = np.poly1d(z)
-                        ax1.plot(temp_time_df['cache_size_proxy'], p(temp_time_df['cache_size_proxy']), 
+                        ax1.plot(cache_sizes, p(cache_sizes), 
                                 "r--", alpha=0.8, linewidth=2, label=f'Trend: y={z[0]:.6f}x+{z[1]:.6f}')
                         ax1.legend()
-
+                    
                     ax1.set_xlabel('Request Number (Cache Size Proxy)')
                     ax1.set_ylabel('Temperature Calculation Time (s)')
                     ax1.set_title('Temperature Calculation Time vs Cache Size')
                     ax1.grid(True, alpha=0.3)
-
+                    
                     # Add statistics
-                    mean_time = temp_time_df['temperature_time'].mean()
+                    mean_time = np.mean(valid_temp_times)
                     ax1.text(0.02, 0.98, f'Mean: {mean_time:.5f}s', 
                             transform=ax1.transAxes, fontsize=10,
                             bbox=dict(boxstyle="round,pad=0.3", facecolor="white", alpha=0.8),
@@ -1498,48 +1502,48 @@ class CachePerformanceAnalyzer:
                 ax1.text(0.5, 0.5, "No temperature time data available", 
                         horizontalalignment='center', verticalalignment='center',
                         transform=ax1.transAxes, fontsize=12)
-
+            
             # Plot 2: Temperature values over time
             ax2 = fig.add_subplot(gs[0, 1])
             if has_temp_data:
                 temp_df = df[df['temperature'].notna()].copy()
-
+                
                 if len(temp_df) > 0:
                     # Color points by cache hit status
                     hit_mask = temp_df['event_type'].str.contains('HIT', na=False)
                     miss_mask = temp_df['event_type'].str.contains('MISS', na=False)
                     direct_mask = temp_df['event_type'].str.contains('DIRECT', na=False)
-
+                    
                     if hit_mask.any():
                         ax2.scatter(temp_df[hit_mask]['request_num'], temp_df[hit_mask]['temperature'], 
                                   alpha=0.7, s=30, color='green', label='Cache Hit')
-
+                    
                     if miss_mask.any():
                         ax2.scatter(temp_df[miss_mask]['request_num'], temp_df[miss_mask]['temperature'], 
                                   alpha=0.7, s=30, color='red', label='Cache Miss')
-
+                    
                     if direct_mask.any():
                         ax2.scatter(temp_df[direct_mask]['request_num'], temp_df[direct_mask]['temperature'], 
                                   alpha=0.7, s=30, color='orange', label='Direct LLM')
-
+                    
                     # Add trend line for temperature
                     if len(temp_df) > 1:
                         z = np.polyfit(temp_df['request_num'], temp_df['temperature'], 1)
                         p = np.poly1d(z)
                         ax2.plot(temp_df['request_num'], p(temp_df['request_num']), 
                                 "b--", alpha=0.5, linewidth=1, label='Temperature Trend')
-
+                    
                     ax2.set_xlabel('Request Number')
                     ax2.set_ylabel('Temperature Value')
                     ax2.set_title('Temperature Values Over Time')
                     ax2.grid(True, alpha=0.3)
                     ax2.set_ylim(-0.1, 2.1)  # Temperature range is [0, 2]
-
+                    
                     # Add horizontal lines for reference
                     ax2.axhline(y=0, color='blue', linestyle=':', alpha=0.5, label='Cache Only (T=0)')
                     ax2.axhline(y=2, color='red', linestyle=':', alpha=0.5, label='LLM Only (T=2)')
                     ax2.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
-
+                    
                     # Add statistics
                     mean_temp = temp_df['temperature'].mean()
                     ax2.text(0.02, 0.02, f'Mean: {mean_temp:.3f}', 
@@ -1553,40 +1557,40 @@ class CachePerformanceAnalyzer:
                 ax2.text(0.5, 0.5, "No temperature data available", 
                         horizontalalignment='center', verticalalignment='center',
                         transform=ax2.transAxes, fontsize=12)
-
+            
             # Plot 3: Temperature distribution and effectiveness
             ax3 = fig.add_subplot(gs[1, 0])
             if has_temp_data:
                 temp_data = df['temperature'].dropna()
-
+                
                 if len(temp_data) > 0:
                     # Create histogram with custom bins
                     n_bins = min(20, len(temp_data) // 3 + 1)
                     counts, bins, patches = ax3.hist(temp_data, bins=n_bins, alpha=0.7, 
                                                    color='skyblue', edgecolor='black')
-
+                    
                     ax3.set_xlabel('Temperature Value')
                     ax3.set_ylabel('Frequency')
                     ax3.set_title('Temperature Value Distribution')
                     ax3.grid(True, alpha=0.3)
-
+                    
                     # Add statistics
                     mean_temp = temp_data.mean()
                     median_temp = temp_data.median()
                     std_temp = temp_data.std()
-
+                    
                     ax3.axvline(mean_temp, color='red', linestyle='--', 
                                label=f'Mean: {mean_temp:.3f}')
                     ax3.axvline(median_temp, color='orange', linestyle='--', 
                                label=f'Median: {median_temp:.3f}')
-
+                    
                     # Add text box with statistics
                     stats_text = f'Mean: {mean_temp:.3f}\nMedian: {median_temp:.3f}\nStd: {std_temp:.3f}'
                     ax3.text(0.98, 0.98, stats_text, 
                             transform=ax3.transAxes, fontsize=10,
                             bbox=dict(boxstyle="round,pad=0.3", facecolor="white", alpha=0.8),
                             verticalalignment='top', horizontalalignment='right')
-
+                    
                     ax3.legend()
                 else:
                     ax3.text(0.5, 0.5, "No valid temperature data", 
@@ -1596,47 +1600,47 @@ class CachePerformanceAnalyzer:
                 ax3.text(0.5, 0.5, "No temperature data available", 
                         horizontalalignment='center', verticalalignment='center',
                         transform=ax3.transAxes, fontsize=12)
-
+            
             # Plot 4: Temperature effectiveness analysis
             ax4 = fig.add_subplot(gs[1, 1])
             if has_temp_data and 'response_time' in df.columns:
                 # Filter data with both temperature and response time
                 correlation_df = df[df['temperature'].notna() & df['response_time'].notna()].copy()
-
+                
                 if len(correlation_df) > 1:
                     # Create scatter plot colored by cache hit status
                     hit_mask = correlation_df['event_type'].str.contains('HIT', na=False)
                     miss_mask = correlation_df['event_type'].str.contains('MISS', na=False)
                     direct_mask = correlation_df['event_type'].str.contains('DIRECT', na=False)
-
+                    
                     if hit_mask.any():
                         ax4.scatter(correlation_df[hit_mask]['temperature'], 
                                   correlation_df[hit_mask]['response_time'],
                                   alpha=0.6, s=40, c='green', label='Cache Hit', marker='o')
-
+                    
                     if miss_mask.any():
                         ax4.scatter(correlation_df[miss_mask]['temperature'], 
                                   correlation_df[miss_mask]['response_time'],
                                   alpha=0.6, s=40, c='red', label='Cache Miss', marker='s')
-
+                    
                     if direct_mask.any():
                         ax4.scatter(correlation_df[direct_mask]['temperature'], 
                                   correlation_df[direct_mask]['response_time'],
                                   alpha=0.6, s=40, c='orange', label='Direct LLM', marker='^')
-
+                    
                     ax4.set_xlabel('Temperature Value')
                     ax4.set_ylabel('Response Time (s)')
                     ax4.set_title('Temperature vs Response Time')
                     ax4.grid(True, alpha=0.3)
                     ax4.legend()
-
+                    
                     # Calculate and display correlation coefficient
                     if len(correlation_df) > 2:
                         corr_coef = np.corrcoef(correlation_df['temperature'], correlation_df['response_time'])[0, 1]
                         ax4.text(0.05, 0.95, f'Correlation: {corr_coef:.3f}', 
                                 transform=ax4.transAxes, fontsize=10,
                                 bbox=dict(boxstyle="round,pad=0.3", facecolor="white", alpha=0.8))
-
+                    
                     # Add trend line
                     if len(correlation_df) > 2:
                         z = np.polyfit(correlation_df['temperature'], correlation_df['response_time'], 1)
@@ -1644,7 +1648,7 @@ class CachePerformanceAnalyzer:
                         temp_range = np.linspace(correlation_df['temperature'].min(), 
                                                correlation_df['temperature'].max(), 100)
                         ax4.plot(temp_range, p(temp_range), "purple", alpha=0.5, linewidth=2, linestyle='--')
-
+                    
                     # Calculate cache hit rate by temperature ranges
                     temp_ranges = [(0, 0.5), (0.5, 1.0), (1.0, 1.5), (1.5, 2.0)]
                     hit_rates = []
@@ -1654,7 +1658,7 @@ class CachePerformanceAnalyzer:
                         if len(range_data) > 0:
                             hit_rate = range_data['event_type'].str.contains('HIT', na=False).mean()
                             hit_rates.append(f'{low}-{high}: {hit_rate:.2%}')
-
+                    
                     if hit_rates:
                         hit_rate_text = 'Hit Rates:\n' + '\n'.join(hit_rates)
                         ax4.text(0.95, 0.05, hit_rate_text, 
@@ -1669,33 +1673,33 @@ class CachePerformanceAnalyzer:
                 ax4.text(0.5, 0.5, "Temperature or response time data not available", 
                         horizontalalignment='center', verticalalignment='center',
                         transform=ax4.transAxes, fontsize=12)
-
+            
             # Add overall title
             run_id = run_data.get("summary", {}).get("run_id", "Unknown")
             fig.suptitle(f'Temperature Analysis - Run #{run_id}', fontsize=16, y=0.98)
-
+            
             # Save if path provided
             if save_path:
                 plt.savefig(save_path, bbox_inches='tight', dpi=300)
-
+            
             return fig
-
+            
         except Exception as e:
             print(f"Error creating temperature analysis: {e}")
             traceback.print_exc()
-
+            
             # Create error figure
             fig, ax = plt.subplots(figsize=(12, 8))
             ax.text(0.5, 0.5, f"Error creating temperature analysis: {e}", 
                    horizontalalignment='center', verticalalignment='center',
                    transform=ax.transAxes, fontsize=14)
-
+            
             if save_path:
                 plt.savefig(save_path, bbox_inches='tight')
-
-            return fig 
-
-# Helper function to generate a report for the latest run
+            
+            return fig
+    
+    # Helper function to generate a report for the latest run
 def generate_latest_run_report(log_dir: str = "cache_logs", output_dir: str = "cache_reports") -> str:
     """
     Generate a report for the latest run.
