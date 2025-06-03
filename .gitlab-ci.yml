@@ -5,12 +5,16 @@ mirror_to_github:
     GIT_STRATEGY: clone
   only:
     - main
-    - magnitude_based_temp
+    - magnitude_based_temp  # Your new branch
   before_script:
     - apk update && apk add git openssh-client
     - git config --global user.name "${GITLAB_USER_NAME}"
     - git config --global user.email "${GITLAB_USER_EMAIL}"
   script:
+    # Test authentication first
+    - echo "Testing GitHub authentication..."
+    - git ls-remote https://${GITHUB_USERNAME}:${GITHUB_TOKEN}@github.com/${GITHUB_USERNAME}/${GITHUB_REPO}.git
+    
     # Set up GitHub remote
     - git remote add github https://${GITHUB_USERNAME}:${GITHUB_TOKEN}@github.com/${GITHUB_USERNAME}/${GITHUB_REPO}.git
     
