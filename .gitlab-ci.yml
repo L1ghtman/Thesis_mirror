@@ -5,6 +5,7 @@ mirror_to_github:
     GIT_STRATEGY: clone
   only:
     - main
+    - magnitude_based_temp
   before_script:
     - apk update && apk add git openssh-client
     - git config --global user.name "${GITLAB_USER_NAME}"
