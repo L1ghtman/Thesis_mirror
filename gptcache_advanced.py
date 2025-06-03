@@ -11,7 +11,6 @@ from components.dataset_manager import DatasetManager
 from gptcache.processor.pre import get_prompt
 from gptcache.manager import CacheBase, VectorBase
 from gptcache.adapter.langchain_models import LangChainLLMs
-from gptcache.embedding import SBERT
 from gptcache.similarity_evaluation import SbertCrossencoderEvaluation
 from gptcache.manager import get_data_manager
 from gptcache.core import Cache
