@@ -107,11 +107,12 @@ def custom_adapt(llm_handler, cache_data_convert, update_cache_callback, *args, 
             print(f"Error in temperature/clustering calculation: {e}")
     
     else:
+        print("Entering temperature calculation")
         try:
             temp_result = time_cal(
                 chat_cache.temperature_func,
                 func_name="temperature",
-                report_func=chat_cache.report.clustering,
+                report_func=chat_cache.report.temperature,
             )(magnitude_cache, embedding_data)
 
             print(f"Temperature result: {temp_result}")

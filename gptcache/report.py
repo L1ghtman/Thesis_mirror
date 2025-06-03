@@ -102,6 +102,10 @@ class Report:
     def average_embedding_time(self):
         """Average embedding time."""
         return self.op_embedding.average()
+    
+    def averege_temperature_time(self):
+        """Average temperature time."""
+        return self.op_temperature.average()
 
     def average_search_time(self):
         """Average search time."""

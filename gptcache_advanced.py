@@ -129,7 +129,7 @@ def main():
 
         partial_questions = []
 
-        for q in questions[:20]:
+        for q in questions[:3]:
             partial_questions.append(q["question"])
 
         test_questions = [

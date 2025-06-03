@@ -51,6 +51,7 @@ def convert_gptcache_report(cache_obj, log_dir="cache_logs"):
         "save_count": report.op_save.count,
         "average_pre_time": report.op_pre.average(),
         "average_emb_time": report.op_embedding.average(),
+        "average_temperature_time": report.op_temperature.average(),
         "average_search_time": report.op_search.average(),
         "average_data_time": report.op_data.average(),
         "average_eval_time": report.op_evaluation.average(),

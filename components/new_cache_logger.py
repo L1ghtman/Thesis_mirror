@@ -35,6 +35,7 @@ class CacheLogger:
             "llm_direct_calls": 0,
             "average_pre_time": 0, 
             "average_emb_time": 0, 
+            "average_temperature_time": 0,
             "average_search_time": 0, 
             "average_data_time": 0, 
             "average_eval_time": 0, 
