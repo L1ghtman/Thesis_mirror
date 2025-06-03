@@ -5,6 +5,7 @@ class Report:
         self.op_pre = OpCounter()
         self.op_embedding = OpCounter()
         self.op_clustering = OpCounter()
+        self.op_temperature = OpCounter()
         self.op_search = OpCounter()
         self.op_data = OpCounter()
         self.op_evaluation = OpCounter()
@@ -36,6 +37,14 @@ class Report:
         """
         self.op_clustering.total_time += delta_time
         self.op_clustering.count += 1
+
+    def temperature(self, delta_time):
+        """Temperature counts and time.
+
+        :param delta_time: additional runtime.
+        """
+        self.op_temperature.total_time += delta_time
+        self.op_temperature.count += 1
 
     def search(self, delta_time):
         """Search counts and time.

@@ -26,6 +26,7 @@ def custom_adapt(llm_handler, cache_data_convert, update_cache_callback, *args, 
     temperature = kwargs.pop("temperature", 0.0)
     chat_cache = kwargs.pop("cache_obj", cache)
     clusterer = chat_cache.clusterer
+    magnitude_cache = chat_cache.magnitude_cache
     session = kwargs.pop("session", None)
     require_object_store = kwargs.pop("require_object_store", False)
     if require_object_store:
@@ -105,6 +106,19 @@ def custom_adapt(llm_handler, cache_data_convert, update_cache_callback, *args, 
         except Exception as e:
             print(f"Error in temperature/clustering calculation: {e}")
     
+    else:
+        try:
+            temp_result = time_cal(
+                chat_cache.temperature_func,
+                func_name="temperature",
+                report_func=chat_cache.report.clustering,
+            )(magnitude_cache, embedding_data)
+
+            print(f"Temperature result: {temp_result}")
+
+        except Exception as e:
+            print(f"Error in temperature/clustering calculation: {e}")
+
     if not hasattr(chat_cache, "last_context"):
         chat_cache.last_context = {}
 

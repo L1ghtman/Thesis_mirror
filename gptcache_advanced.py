@@ -2,31 +2,21 @@ import os
 import warnings
 import time
 import logging
-from components import helpers, custom_llm, custom_sim_eval, new_cache_logger, cache_analyzer
+from components import helpers, custom_llm, new_cache_logger, cache_analyzer, magnitude_based_estimator
 import sys
 import traceback
-#import signal
 import faiss
 import multiprocessing
-from components.dataset_manager import DatasetManager, create_default_manager
-#import asyncio
-#import concurrent.futures
-#from typing import List, Dict, Any
-#from gptcache import Config
-#from gptcache.core import Cache
+from components.dataset_manager import DatasetManager
 from gptcache.processor.pre import get_prompt
 from gptcache.manager import CacheBase, VectorBase
 from gptcache.adapter.langchain_models import LangChainLLMs
-from gptcache.embedding import SBERT
 from gptcache.similarity_evaluation import SbertCrossencoderEvaluation
 from gptcache.manager import get_data_manager
-from components.cache_utils import embedding_func, system_cleanup, temperature_func
-#from components.smart_cache import SmartCache, EmbeddingInterceptor
-#import gptcache.adapter.adapter
-#from components.custom_adapter import custom_adapt
-from components.cluster_aware_cache import ClusterAwareCache
-from components.mini_batch_kmeans import MiniBatchKMeansClustering
-
+from gptcache.core import Cache
+from components.cache_utils import embedding_func, system_cleanup, magnitude_temperature_func
+#from components.cluster_aware_cache import ClusterAwareCache
+#from components.mini_batch_kmeans import MiniBatchKMeansClustering
 
 os.environ['OBJC_DISABLE_INITIALIZE_FORK_SAFETY'] = 'YES'
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -164,21 +154,23 @@ def main():
         ]
 
         CacheLogger = new_cache_logger.CacheLogger()
+        MagnitudeCache = magnitude_based_estimator.MagnitudeCache()
 
         llm = custom_llm.localLlama()
         cached_llm = LangChainLLMs(llm=llm)
 
-        clusterer = MiniBatchKMeansClustering(max_clusters=8)
+        #clusterer = MiniBatchKMeansClustering(max_clusters=8)
 
-        #semantic_cache = Cache()
-        semantic_cache = ClusterAwareCache()
+        semantic_cache = Cache()
+        #semantic_cache = ClusterAwareCache()
         semantic_cache.init(
             embedding_func=embedding_func,
             data_manager=data_manager,
             similarity_evaluation=evaluation,
             pre_embedding_func=get_prompt,
-            clusterer=clusterer,
-            temperature_func=temperature_func,
+            #clusterer=clusterer,
+            magnitude_cache=MagnitudeCache,
+            temperature_func=magnitude_temperature_func,
         )
 
         try:
