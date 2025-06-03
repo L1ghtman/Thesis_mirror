@@ -14,7 +14,7 @@ from gptcache.adapter.langchain_models import LangChainLLMs
 from gptcache.similarity_evaluation import SbertCrossencoderEvaluation
 from gptcache.manager import get_data_manager
 from gptcache.core import Cache
-from components.cache_utils import embedding_func, system_cleanup, temperature_func, magnitude_temperature_func
+from components.cache_utils import embedding_func, system_cleanup, magnitude_temperature_func
 #from components.cluster_aware_cache import ClusterAwareCache
 #from components.mini_batch_kmeans import MiniBatchKMeansClustering
 
