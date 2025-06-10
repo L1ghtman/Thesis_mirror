@@ -742,6 +742,10 @@ class CachePerformanceAnalyzer:
                 self.plot_temperature_analysis(run_data, temperature_path)
                 plot_paths["temperature"] = os.path.basename(temperature_path)
 
+                magnitude_path = os.path.join(self.output_dir, f"run_{run_id}", "embedding_magnitudes.png")
+                self.plot_embedding_magnitude_distribution(run_data, magnitude_path)
+                plot_paths["embedding_magnitudes"] = os.path.basename(magnitude_path)
+
                 # Generate the cluster analysis plot
                 #cluster_path = os.path.join(self.output_dir, f"run_{run_id}", "cluster_analysis.png")
                 #self.plot_cluster_analysis(run_data, cluster_path)
@@ -1167,12 +1171,19 @@ class CachePerformanceAnalyzer:
                             <h3><i class="fas fa-cubes"></i> Temperature Analysis</h3>
                             <img src="{}" alt="Temperature Analysis">
                         </div>
+
+                        <div class="plot-container">
+                            <h3><i class="fas fa-chart-bar"></i> Embedding Magnitude Distribution</h3>
+                            <p>Analysis of embedding L2 norms showing query complexity patterns and their relationship to cache performance.</p>
+                            <img src="{}" alt="Embedding Magnitude Distribution">
+                        </div>
                     </div>
                 """.format(
                     plot_paths.get("distribution", "#"),
                     #plot_paths.get("response_times", "#"),
                     plot_paths.get("similarity", "#"),
-                    plot_paths.get("temperature", "#")
+                    plot_paths.get("temperature", "#"),
+                    plot_paths.get("embedding_magnitudes", "#")
                 )
 
             # Get request details from DataFrame for the table
@@ -1698,8 +1709,8 @@ class CachePerformanceAnalyzer:
                 plt.savefig(save_path, bbox_inches='tight')
             
             return fig
-    
-    # Helper function to generate a report for the latest run
+
+# Helper function to generate a report for the latest run
 def generate_latest_run_report(log_dir: str = "cache_logs", output_dir: str = "cache_reports") -> str:
     """
     Generate a report for the latest run.

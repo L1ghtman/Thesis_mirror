@@ -97,8 +97,11 @@ class MagnitudeCache:
         }
         self.debug_log.write(json.dumps(log_entry) + "\n")
         self.debug_log.flush()
+
+        # Get magnitude from debug info
+        magnitude = debug.get("magnitude", 0.0)
         
-        return temp
+        return temp, magnitude
     
     def __del__(self):
         """Ensure the file is closed when the object is destroyed"""

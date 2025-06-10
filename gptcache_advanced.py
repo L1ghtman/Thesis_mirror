@@ -62,6 +62,7 @@ def process_request(question, cached_llm, semantic_cache, CacheLogger, use_cache
         cluster_id = semantic_cache.last_context.get('cluster_id')
         temperature = semantic_cache.last_context.get('temperature')
         similarity_score = semantic_cache.last_context.get('similarity_score')
+        magnitude = semantic_cache.last_context.get('magnitude')
 
     print(f"temperature: {temperature}")
         
@@ -71,6 +72,8 @@ def process_request(question, cached_llm, semantic_cache, CacheLogger, use_cache
         temperature = tracking_context['temperature']
     if 'similarity_score' in tracking_context:
         similarity_score = tracking_context['similarity_score']
+    if 'magnitude' in tracking_context:
+        magnitude = tracking_context['magnitude']
 
     response_time = time.time() - start_time
 
@@ -84,6 +87,7 @@ def process_request(question, cached_llm, semantic_cache, CacheLogger, use_cache
         similarity_score=similarity_score,
         used_cache=use_cache,
         temperature=temperature,
+        magnitude=magnitude,
         cluster_id=cluster_id,
         report_metrics=report_metrics
     )

@@ -109,7 +109,7 @@ def custom_adapt(llm_handler, cache_data_convert, update_cache_callback, *args, 
     else:
         print("Entering temperature calculation")
         try:
-            temp_result = time_cal(
+            temp_result, magnitude = time_cal(
                 chat_cache.temperature_func,
                 func_name="temperature",
                 report_func=chat_cache.report.temperature,
@@ -133,7 +133,9 @@ def custom_adapt(llm_handler, cache_data_convert, update_cache_callback, *args, 
     chat_cache.last_context["temperature"] = temperature
     print(f"Storing temperature in context: {temperature}")
 
-    
+    context["magnitude"] = magnitude
+    chat_cache.last_context["magnitude"] = magnitude
+    print(f"Storing magnitude in context: {magnitude}")
 
     if 0 < temperature < 2:
         cache_skip_options = [True, False]

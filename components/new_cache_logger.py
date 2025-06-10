@@ -91,6 +91,7 @@ class CacheLogger:
                     used_cache: bool,
                     similarity_score: Optional[float] = None,
                     temperature: Optional[float] = None,
+                    magnitude: Optional[float] = None,
                     cluster_id: Optional[int] = None,
                     report_metrics: Dict[str, Any] = {}):
         
@@ -98,7 +99,7 @@ class CacheLogger:
         self.metrics["temperature_times"].append(report_metrics.get("temperature_time", 0))
 
         #print(f"cluster times: {self.metrics['clustering_times']}")
-        print(f"temperature times: {self.metrics['clustering_times']}")
+        print(f"temperature times: {self.metrics['temperature_times']}")
 
         if used_cache:
             if is_cache_hit:
@@ -125,7 +126,8 @@ class CacheLogger:
             "response_time": response_time,
             "similarity_score": similarity_score,
             "used_cache": used_cache,
-            "temperature": temperature
+            "temperature": temperature,
+            "magnitude": magnitude
         }
 
         #if cluster_id is not None:
