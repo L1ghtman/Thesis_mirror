@@ -1,6 +1,9 @@
 import numpy as np
 from collections import deque
 from typing import Tuple
+import json
+import datetime
+import os
 
 class MagnitudeBasedEstimator:
     """
@@ -72,11 +75,32 @@ class MagnitudeBasedEstimator:
 
 # Integration with your system
 class MagnitudeCache:
-    def __init__(self):
+    def __init__(self, debug_log_path="./logs/magnitude_debug.log"):
         self.estimator = MagnitudeBasedEstimator()
         self.base_temperature = 0.8
+        
+        # Create logs directory if it doesn't exist
+        os.makedirs(os.path.dirname(debug_log_path), exist_ok=True)
+        
+        # Open the debug log file
+        self.debug_log_path = debug_log_path
+        self.debug_log = open(debug_log_path, 'a')
+        print(f"Writing magnitude debug info to: {debug_log_path}")
         
     def get_temperature(self, embedding):
         temp, debug = self.estimator.estimate_density(embedding)
         print(f"Debug: {debug}")  # TODO: Remove in production
+        timestamp = datetime.datetime.now().isoformat()
+        log_entry = {
+            "timestamp": timestamp,
+            **debug
+        }
+        self.debug_log.write(json.dumps(log_entry) + "\n")
+        self.debug_log.flush()
+        
         return temp
+    
+    def __del__(self):
+        """Ensure the file is closed when the object is destroyed"""
+        if hasattr(self, 'debug_log') and self.debug_log:
+            self.debug_log.close()
