@@ -149,14 +149,6 @@ def main():
             #"Give me a name suggestion for my dog, he likes peanut butter"
         ]
 
-        test_answers = [
-            "Test answer 1",
-            "Test answer 2",
-            "Test answer 3",
-            "Test answer 4",
-            "Test answer 5",
-        ]
-
         CacheLogger = new_cache_logger.CacheLogger()
         MagnitudeCache = magnitude_based_estimator.MagnitudeCache()
 

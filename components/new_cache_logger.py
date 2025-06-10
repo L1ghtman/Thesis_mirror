@@ -4,6 +4,7 @@ import time
 import logging
 from datetime import datetime
 from typing import Dict, Any, Optional, List, Union
+import numpy as np
 
 class CacheLogger:
 
@@ -187,9 +188,32 @@ class CacheLogger:
 
         return summary
 
+    def _to_serializable(self, obj):
+        """Recursively convert numpy and other non-serializable types to native Python types."""
+        if isinstance(obj, dict):
+            return {self._to_serializable(k): self._to_serializable(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [self._to_serializable(i) for i in obj]
+        elif isinstance(obj, tuple):
+            return tuple(self._to_serializable(i) for i in obj)
+        elif isinstance(obj, (np.integer,)):
+            return int(obj)
+        elif isinstance(obj, (np.floating,)):
+            return float(obj)
+        elif isinstance(obj, (np.ndarray,)):
+            return obj.tolist()
+        elif hasattr(obj, 'item') and callable(obj.item):
+            # Handles numpy scalar types
+            try:
+                return obj.item()
+            except Exception:
+                return str(obj)
+        else:
+            return obj
+
     def _save_metrics(self):
         with open(self.log_file, "w") as file:
-            json.dump(self.metrics, file, indent=2)
+            json.dump(self._to_serializable(self.metrics), file, indent=2)
 
     def close(self) -> None:
         self.log_summary()

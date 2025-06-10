@@ -91,15 +91,21 @@ class MagnitudeCache:
         temp, debug = self.estimator.estimate_density(embedding)
         print(f"Debug: {debug}")  # TODO: Remove in production
         timestamp = datetime.datetime.now().isoformat()
+        # Convert all values in debug to native Python types
+        debug_clean = {k: float(v) if isinstance(v, (np.floating, np.float32, np.float64)) else v for k, v in debug.items()}
         log_entry = {
             "timestamp": timestamp,
-            **debug
+            **debug_clean
         }
         self.debug_log.write(json.dumps(log_entry) + "\n")
         self.debug_log.flush()
 
         # Get magnitude from debug info
-        magnitude = debug.get("magnitude", 0.0)
+        try:
+            magnitude = debug.get("magnitude", 0.0)
+            print(f"Extracted magnitude: {magnitude}")
+        except Exception as e:
+            print(f"Error extracting magnitude: {e}")
         
         return temp, magnitude
     

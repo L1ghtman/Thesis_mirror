@@ -116,6 +116,7 @@ def custom_adapt(llm_handler, cache_data_convert, update_cache_callback, *args, 
             )(magnitude_cache, embedding_data)
 
             print(f"Temperature result: {temp_result}")
+            print(f"Magnitude: {magnitude}")
 
         except Exception as e:
             print(f"Error in temperature/clustering calculation: {e}")
