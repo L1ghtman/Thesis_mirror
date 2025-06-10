@@ -16,6 +16,10 @@ SP = "You are a helpful AI assistant. Limit your response to 5 sentences. Do not
 # Take a prompt and format it into Llama-3 prompt token format according to https://llama.meta.com/docs/model-cards-and-prompt-formats/meta-llama-3/
 def prompt_format(prompt: str, first_call: bool) -> Tuple[str, bool]:
     """Take a user input and format it into llama3 prompt token format."""
+    return (f"{SH}system{EH}\n\n{SP}{EOT}{SH}user{EH}\n\n{prompt}{EOT}{SH}assistant{EH}\n\n", first_call)
+   
+def convo_aware_prompt_format(prompt: str, first_call: bool) -> Tuple[str, bool]:
+    """Take a user input and format it into llama3 prompt token format."""
     if first_call:
         first_call = False
         # TODO: insert '\n\n' into tokens itself
@@ -23,7 +27,8 @@ def prompt_format(prompt: str, first_call: bool) -> Tuple[str, bool]:
         return (f"{SH}system{EH}\n\n{SP}{EOT}{SH}user{EH}\n\n{prompt}{EOT}{SH}assistant{EH}\n\n", first_call)
     else:
         return (f"{prompt}{EOT}{SH}assistant{EH}\n\n", first_call)
-    
+
+
 def convert_gptcache_report(cache_obj, log_dir="cache_logs"):
     """Convert GPTCache report to format compatible with cache_analyzer"""
     report = cache_obj.report
