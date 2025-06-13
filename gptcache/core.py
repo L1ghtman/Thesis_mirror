@@ -38,6 +38,7 @@ class Cache:
         self.embedding_func = None
         self.clusterer = None
         self.magnitude_cache = None
+        self.lsh_cache = None
         self.temperature_func = None
         self.data_manager: Optional[DataManager] = None
         self.similarity_evaluation: Optional[SimilarityEvaluation] = None
@@ -54,6 +55,7 @@ class Cache:
         embedding_func=string_embedding,
         clusterer=None,
         magnitude_cache=None,
+        lsh_cache=None,
         temperature_func=None,
         data_manager: DataManager = get_data_manager(),
         similarity_evaluation=ExactMatchEvaluation(),
@@ -81,6 +83,7 @@ class Cache:
         self.embedding_func = embedding_func
         self.clusterer = clusterer
         self.magnitude_cache = magnitude_cache
+        self.lsh_cache = lsh_cache
         self.temperature_func = temperature_func
         self.data_manager: DataManager = data_manager
         self.similarity_evaluation = similarity_evaluation

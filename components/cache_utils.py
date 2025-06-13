@@ -1,32 +1,21 @@
-import os
-import warnings
 import time
 import logging
 from components import cache_analyzer
 import sys
 import traceback
-import signal
-import faiss
-import multiprocessing
-from components.dataset_manager import DatasetManager, create_default_manager
-from components.magnitude_based_estimator import MagnitudeCache
-import asyncio
-import concurrent.futures
-from typing import List, Dict, Any
-from gptcache import Config
 from gptcache.core import Cache
-from gptcache.processor.pre import get_prompt
-from gptcache.manager import CacheBase, VectorBase
-from gptcache.adapter.langchain_models import LangChainLLMs
 from gptcache.embedding import SBERT
-from gptcache.similarity_evaluation import SbertCrossencoderEvaluation
-from gptcache.manager import get_data_manager
 import numpy as np
-
+from transformers import AutoTokenizer, AutoModel
 
 def embedding_func(prompt, extra_param=None):
     encoder = SBERT('all-MiniLM-L6-v2')
     embedding = encoder.to_embeddings(prompt)
+    return tuple(embedding)
+
+def non_normalized_embedding_func(prompt, extra_param=None):
+    encoder = SBERT('all-MiniLM-L6-v2')
+    embedding = encoder.to_embeddings(prompt, normalize_embeddings=True)
     return tuple(embedding)
 
 def temperature_func(clusterer, embedding_data, cache_size, temperature):
@@ -121,6 +110,12 @@ def magnitude_temperature_func(magnitude_cache, embedding):
     Calculate the temperature based on embedding magnitude.
     """
     return magnitude_cache.get_temperature(embedding) 
+
+def lsh_temperature_func(lsh_cache, embedding):
+    """
+    Calculate the temperature based on LSH bucket density.
+    """
+    return lsh_cache.get_temperature(embedding)
 
 def system_cleanup(semantic_cache, vector_base, data_manager):
     """

@@ -2,7 +2,7 @@ import os
 import warnings
 import time
 import logging
-from components import helpers, custom_llm, new_cache_logger, cache_analyzer, magnitude_based_estimator
+from components import helpers, custom_llm, new_cache_logger, cache_analyzer, magnitude_based_estimator, lsh_based_estimator
 import sys
 import traceback
 import faiss
@@ -14,7 +14,7 @@ from gptcache.adapter.langchain_models import LangChainLLMs
 from gptcache.similarity_evaluation import SbertCrossencoderEvaluation
 from gptcache.manager import get_data_manager
 from gptcache.core import Cache
-from components.cache_utils import embedding_func, system_cleanup, magnitude_temperature_func
+from components.cache_utils import embedding_func, system_cleanup, magnitude_temperature_func, lsh_temperature_func
 #from components.cluster_aware_cache import ClusterAwareCache
 #from components.mini_batch_kmeans import MiniBatchKMeansClustering
 
@@ -62,7 +62,7 @@ def process_request(question, cached_llm, semantic_cache, CacheLogger, use_cache
         cluster_id = semantic_cache.last_context.get('cluster_id')
         temperature = semantic_cache.last_context.get('temperature')
         similarity_score = semantic_cache.last_context.get('similarity_score')
-        magnitude = semantic_cache.last_context.get('magnitude')
+        #magnitude = semantic_cache.last_context.get('magnitude')
 
     print(f"temperature: {temperature}")
         
@@ -72,8 +72,8 @@ def process_request(question, cached_llm, semantic_cache, CacheLogger, use_cache
         temperature = tracking_context['temperature']
     if 'similarity_score' in tracking_context:
         similarity_score = tracking_context['similarity_score']
-    if 'magnitude' in tracking_context:
-        magnitude = tracking_context['magnitude']
+    #if 'magnitude' in tracking_context:
+    #    magnitude = tracking_context['magnitude']
 
     response_time = time.time() - start_time
 
@@ -87,7 +87,7 @@ def process_request(question, cached_llm, semantic_cache, CacheLogger, use_cache
         similarity_score=similarity_score,
         used_cache=use_cache,
         temperature=temperature,
-        magnitude=magnitude,
+        #magnitude=magnitude,
         cluster_id=cluster_id,
         report_metrics=report_metrics
     )
@@ -133,7 +133,7 @@ def main():
 
         partial_questions = []
 
-        for q in questions[:3]:
+        for q in questions[:10]:
             partial_questions.append(q["question"])
 
         test_questions = [
@@ -151,6 +151,7 @@ def main():
 
         CacheLogger = new_cache_logger.CacheLogger()
         MagnitudeCache = magnitude_based_estimator.MagnitudeCache()
+        LshCache = lsh_based_estimator.LSHCache()
 
         llm = custom_llm.localLlama()
         cached_llm = LangChainLLMs(llm=llm)
@@ -166,7 +167,9 @@ def main():
             pre_embedding_func=get_prompt,
             #clusterer=clusterer,
             magnitude_cache=MagnitudeCache,
-            temperature_func=magnitude_temperature_func,
+            lsh_cache=LshCache,
+            #temperature_func=magnitude_temperature_func,
+            temperature_func=lsh_temperature_func,
         )
 
         try:

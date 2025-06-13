@@ -27,6 +27,7 @@ def custom_adapt(llm_handler, cache_data_convert, update_cache_callback, *args, 
     chat_cache = kwargs.pop("cache_obj", cache)
     clusterer = chat_cache.clusterer
     magnitude_cache = chat_cache.magnitude_cache
+    lsh_cache = chat_cache.lsh_cache
     session = kwargs.pop("session", None)
     require_object_store = kwargs.pop("require_object_store", False)
     if require_object_store:
@@ -109,14 +110,19 @@ def custom_adapt(llm_handler, cache_data_convert, update_cache_callback, *args, 
     else:
         print("Entering temperature calculation")
         try:
-            temp_result, magnitude = time_cal(
+            #temp_result, magnitude = time_cal(
+            #    chat_cache.temperature_func,
+            #    func_name="temperature",
+            #    report_func=chat_cache.report.temperature,
+            #)(magnitude_cache, embedding_data)
+            temp_result = time_cal(
                 chat_cache.temperature_func,
                 func_name="temperature",
                 report_func=chat_cache.report.temperature,
-            )(magnitude_cache, embedding_data)
+            )(lsh_cache, embedding_data)
 
             print(f"Temperature result: {temp_result}")
-            print(f"Magnitude: {magnitude}")
+            #print(f"Magnitude: {magnitude}")
 
         except Exception as e:
             print(f"Error in temperature/clustering calculation: {e}")
@@ -134,9 +140,9 @@ def custom_adapt(llm_handler, cache_data_convert, update_cache_callback, *args, 
     chat_cache.last_context["temperature"] = temperature
     print(f"Storing temperature in context: {temperature}")
 
-    context["magnitude"] = magnitude
-    chat_cache.last_context["magnitude"] = magnitude
-    print(f"Storing magnitude in context: {magnitude}")
+    #context["magnitude"] = magnitude
+    #chat_cache.last_context["magnitude"] = magnitude
+    #print(f"Storing magnitude in context: {magnitude}")
 
     if 0 < temperature < 2:
         cache_skip_options = [True, False]
