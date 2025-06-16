@@ -107,7 +107,7 @@ class CacheLogger:
         
         #self.metrics["clustering_times"].append(report_metrics.get("clustering_time", 0))
         self.metrics["temperature_times"].append(report_metrics.get("temperature_time", 0))
-        self.metrics["lsh_debug_info"] = debug_info
+        self.metrics["lsh_debug_info"].append(debug_info if debug_info else {})
 
         #print(f"cluster times: {self.metrics['clustering_times']}")
         print(f"temperature times: {self.metrics['temperature_times']}")
