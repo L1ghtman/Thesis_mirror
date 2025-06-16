@@ -48,7 +48,7 @@ class CacheLogger:
             "llm_response_times": [],
             "clustering_times": [],
             "temperature_times": [],
-            "lsh_debug_info": {},
+            "lsh_debug_info": [],
             "requests": [],
             "summary": {},
         }

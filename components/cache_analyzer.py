@@ -753,6 +753,28 @@ class CachePerformanceAnalyzer:
                 temperature_path = os.path.join(self.output_dir, f"run_{run_id}", "temperature.png")
                 self.plot_temperature_analysis(run_data, temperature_path)
                 plot_paths["temperature"] = os.path.basename(temperature_path)
+                
+                lsh_plot_paths = {}
+
+                # Temperature dynamics
+                temp_dynamics_path = os.path.join(self.output_dir, f"run_{run_id}", "lsh_temperature_dynamics.png")
+                self.plot_temperature_dynamics(run_data, temp_dynamics_path)
+                lsh_plot_paths["temperature_dynamics"] = os.path.basename(temp_dynamics_path)
+
+                # Performance metrics
+                perf_metrics_path = os.path.join(self.output_dir, f"run_{run_id}", "lsh_performance_metrics.png")
+                self.plot_lsh_performance_metrics(run_data, perf_metrics_path)
+                lsh_plot_paths["performance_metrics"] = os.path.basename(perf_metrics_path)
+
+                # System behavior
+                system_behavior_path = os.path.join(self.output_dir, f"run_{run_id}", "lsh_system_behavior.png")
+                self.plot_lsh_system_behavior(run_data, system_behavior_path)
+                lsh_plot_paths["system_behavior"] = os.path.basename(system_behavior_path)
+
+                # Adaptive behavior
+                adaptive_path = os.path.join(self.output_dir, f"run_{run_id}", "lsh_adaptive_behavior.png")
+                self.plot_lsh_adaptive_behavior(run_data, adaptive_path)
+                lsh_plot_paths["adaptive_behavior"] = os.path.basename(adaptive_path)
 
                 #magnitude_path = os.path.join(self.output_dir, f"run_{run_id}", "embedding_magnitudes.png")
                 #self.plot_embedding_magnitude_distribution(run_data, magnitude_path)
@@ -1190,12 +1212,43 @@ class CachePerformanceAnalyzer:
                             <img src="{}" alt="Embedding Magnitude Distribution">
                         </div>
                     </div>
+                    <!-- LSH Algorithm Analysis -->
+                    <div class="section">
+                        <h2 class="section-title">LSH Algorithm Performance Analysis</h2>
+
+                        <div class="plot-container">
+                            <h3><i class="fas fa-temperature-high"></i> Temperature Dynamics</h3>
+                            <p>Analysis of temperature evolution and its relationship with cache decisions.</p>
+                            <img src="{}" alt="LSH Temperature Dynamics">
+                        </div>
+
+                        <div class="plot-container">
+                            <h3><i class="fas fa-tachometer-alt"></i> Performance Metrics</h3>
+                            <p>LSH computation efficiency and cache factor effectiveness.</p>
+                            <img src="{}" alt="LSH Performance Metrics">
+                        </div>
+
+                        <div class="plot-container">
+                            <h3><i class="fas fa-network-wired"></i> System Behavior</h3>
+                            <p>Bucket lifecycle, density patterns, and system-wide correlations.</p>
+                            <img src="{}" alt="LSH System Behavior">
+                        </div>
+
+                        <div class="plot-container">
+                            <h3><i class="fas fa-brain"></i> Adaptive Behavior</h3>
+                            <p>Simulated annealing patterns and exploration vs exploitation phases.</p>
+                            <img src="{}" alt="LSH Adaptive Behavior">
+                        </div>
+                    </div>
                 """.format(
                     plot_paths.get("distribution", "#"),
-                    #plot_paths.get("response_times", "#"),
                     plot_paths.get("similarity", "#"),
                     plot_paths.get("temperature", "#"),
-                    plot_paths.get("embedding_magnitudes", "#")
+                    plot_paths.get("embedding_magnitudes", "#"),
+                    lsh_plot_paths.get("temperature_dynamics", "#"),
+                    lsh_plot_paths.get("performance_metrics", "#"),
+                    lsh_plot_paths.get("system_behavior", "#"),
+                    lsh_plot_paths.get("adaptive_behavior", "#")
                 )
 
             # Get request details from DataFrame for the table
@@ -1966,6 +2019,325 @@ class CachePerformanceAnalyzer:
                 plt.savefig(save_path, bbox_inches='tight')
             
             return fig
+
+    def extract_lsh_debug_data(self, run_data: Dict[str, Any]) -> pd.DataFrame:
+        """
+        Extract LSH debug information into a DataFrame for analysis.
+        """
+        lsh_debug_info = run_data.get("lsh_debug_info", [])
+
+        if not lsh_debug_info:
+            print("No LSH debug info found in run data")
+            return pd.DataFrame()
+
+        # Convert list of debug info dicts to DataFrame
+        df = pd.DataFrame(lsh_debug_info)
+
+        # Add cache hit information if available
+        if "requests" in run_data and len(run_data["requests"]) == len(lsh_debug_info):
+            cache_hits = []
+            for req in run_data["requests"]:
+                cache_hit = req.get("cache_hit", None)
+                # Convert to boolean, handling None and various falsy values
+                if cache_hit is None:
+                    cache_hits.append(False)
+                else:
+                    cache_hits.append(bool(cache_hit))
+
+            df["cache_hit"] = cache_hits
+
+        # Ensure numeric columns are properly typed
+        numeric_columns = ['temperature', 'bucket_density', 'neighbor_contribution', 
+                          'density', 'cache_factor', 'hamming_distance_from_last', 
+                          'bucket_age', 'bucket_count', 'bucket_reuse_rate', 
+                          'computation_time_ms']
+
+        for col in numeric_columns:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
+
+        return df
+
+    def plot_temperature_dynamics(self, run_data: Dict[str, Any], save_path: str) -> None:
+        """Create comprehensive temperature analysis plots"""
+        lsh_df = self.extract_lsh_debug_data(run_data)
+        
+        if lsh_df.empty:
+            print("No LSH debug data available for temperature dynamics plot")
+            return
+        
+        fig = plt.figure(figsize=(15, 10))
+        
+        # Plot 1: Temperature evolution with cache decisions
+        ax1 = plt.subplot(3, 1, 1)
+        temps = lsh_df['temperature'].values
+        times = range(len(temps))
+        
+        # Color-code by cache decision
+        colors = ['green' if hit else 'red' for hit in lsh_df.get('cache_hit', [False] * len(temps))]
+        scatter = ax1.scatter(times, temps, c=colors, alpha=0.6, s=30)
+        ax1.plot(times, temps, 'k-', alpha=0.3, linewidth=0.5)
+        
+        ax1.set_ylabel('Temperature')
+        ax1.set_title('Temperature Evolution with Cache Decisions (Green=Hit, Red=Miss)')
+        ax1.grid(True, alpha=0.3)
+        
+        # Plot 2: Temperature vs Cache Hit Rate (rolling window)
+        ax2 = plt.subplot(3, 1, 2)
+        if 'cache_hit' in lsh_df.columns:
+            window_size = min(50, len(lsh_df) // 5)  # Adaptive window size
+            rolling_hit_rate = lsh_df['cache_hit'].rolling(window_size).mean()
+            ax2.plot(rolling_hit_rate.index, rolling_hit_rate.values, 'b-', 
+                    label=f'Hit Rate ({window_size}-request window)')
+            ax2_twin = ax2.twinx()
+            ax2_twin.plot(times, temps, 'r-', alpha=0.5, label='Temperature')
+            
+            ax2.set_ylabel('Cache Hit Rate', color='b')
+            ax2_twin.set_ylabel('Temperature', color='r')
+            ax2.set_xlabel('Request Number')
+            ax2.legend(loc='upper left')
+            ax2_twin.legend(loc='upper right')
+        
+        # Plot 3: Temperature distribution
+        ax3 = plt.subplot(3, 1, 3)
+        ax3.hist(temps, bins=50, edgecolor='black', alpha=0.7)
+        ax3.axvline(np.mean(temps), color='red', linestyle='--', 
+                   label=f'Mean: {np.mean(temps):.3f}')
+        ax3.set_xlabel('Temperature')
+        ax3.set_ylabel('Frequency')
+        ax3.set_title('Temperature Distribution')
+        ax3.legend()
+        
+        plt.tight_layout()
+        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+        plt.close()
+    
+    def plot_lsh_performance_metrics(self, run_data: Dict[str, Any], save_path: str) -> None:
+        """Visualize LSH-specific performance metrics"""
+        lsh_df = self.extract_lsh_debug_data(run_data)
+
+        if lsh_df.empty:
+            print("No LSH debug data available for performance metrics plot")
+            return
+
+        fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(15, 10))
+
+        # Plot 1: Computation time analysis
+        comp_times = lsh_df['computation_time_ms'].values
+        cache_factors = lsh_df['cache_factor'].values
+
+        if 'cache_hit' in lsh_df.columns:
+            # Convert cache_hit to boolean array, handling None/NaN values
+            cache_hits = lsh_df['cache_hit'].fillna(False)
+
+            # Ensure boolean type
+            if cache_hits.dtype != bool:
+                # Handle various possible values
+                cache_hits = cache_hits.apply(lambda x: bool(x) if x is not None else False)
+
+            hit_mask = cache_hits.values.astype(bool)
+            hit_times = comp_times[hit_mask]
+            miss_times = comp_times[~hit_mask]
+
+            if len(hit_times) > 0 and len(miss_times) > 0:
+                ax1.boxplot([hit_times, miss_times], labels=['Cache Hit', 'Cache Miss'])
+            elif len(hit_times) > 0:
+                ax1.boxplot([hit_times], labels=['Cache Hit'])
+            elif len(miss_times) > 0:
+                ax1.boxplot([miss_times], labels=['Cache Miss'])
+            else:
+                ax1.hist(comp_times, bins=30, alpha=0.7)
+        else:
+            ax1.hist(comp_times, bins=30, alpha=0.7)
+
+        ax1.set_ylabel('Computation Time (ms)')
+        ax1.set_title('LSH Computation Time Distribution')
+        ax1.grid(True, alpha=0.3)
+
+        # Plot 2: Bucket reuse efficiency
+        ax2.plot(lsh_df['bucket_reuse_rate'].values, 'g-', linewidth=2)
+        ax2.fill_between(range(len(lsh_df)), 0, lsh_df['bucket_reuse_rate'].values, alpha=0.3)
+        ax2.set_xlabel('Request Number')
+        ax2.set_ylabel('Bucket Reuse Rate')
+        ax2.set_title('LSH Bucket Reuse Efficiency Over Time')
+        ax2.grid(True, alpha=0.3)
+
+        # Plot 3: Cache factor effectiveness
+        if 'cache_hit' in lsh_df.columns:
+            # Use the cleaned cache_hits from above
+            cache_hit_numeric = hit_mask.astype(float)
+            ax3.scatter(cache_factors, cache_hit_numeric, alpha=0.5)
+
+            # Add trend line only if we have valid data
+            if len(cache_factors) > 1 and np.std(cache_factors) > 0:
+                z = np.polyfit(cache_factors, cache_hit_numeric, 1)
+                p = np.poly1d(z)
+                ax3.plot(sorted(cache_factors), p(sorted(cache_factors)), "r--", alpha=0.8)
+        else:
+            ax3.hist(cache_factors, bins=30, alpha=0.7)
+
+        ax3.set_xlabel('Cache Factor')
+        ax3.set_ylabel('Cache Hit (1) / Miss (0)')
+        ax3.set_title('Cache Factor vs Cache Decision')
+        ax3.grid(True, alpha=0.3)
+
+        # Plot 4: Hamming distance analysis
+        hamming_dists = lsh_df['hamming_distance_from_last'].values
+        ax4.hist(hamming_dists, bins=50, edgecolor='black', alpha=0.7)
+        if len(hamming_dists) > 0:
+            ax4.axvline(np.mean(hamming_dists), color='red', linestyle='--', 
+                        label=f'Mean: {np.mean(hamming_dists):.1f}')
+        ax4.set_xlabel('Hamming Distance from Previous Query')
+        ax4.set_ylabel('Frequency')
+        ax4.set_title('Query Similarity Distribution (LSH)')
+        ax4.legend()
+
+        plt.tight_layout()
+        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+        plt.close()
+
+    def plot_lsh_system_behavior(self, run_data: Dict[str, Any], save_path: str) -> None:
+        """Analyze LSH system behavior patterns"""
+        lsh_df = self.extract_lsh_debug_data(run_data)
+        
+        if lsh_df.empty:
+            print("No LSH debug data available for system behavior plot")
+            return
+        
+        fig = plt.figure(figsize=(15, 12))
+        
+        # Plot 1: Bucket lifecycle and growth
+        ax1 = plt.subplot(3, 2, 1)
+        ax1.plot(lsh_df['total_unique_buckets'].values, 'b-', label='Unique Buckets')
+        ax1.set_xlabel('Request Number')
+        ax1.set_ylabel('Total Unique Buckets')
+        ax1.set_title('LSH Cache Growth Pattern')
+        ax1.legend()
+        ax1.grid(True, alpha=0.3)
+        
+        # Plot 2: Bucket density vs temperature
+        ax2 = plt.subplot(3, 2, 2)
+        scatter = ax2.scatter(lsh_df['bucket_density'].values, 
+                            lsh_df['temperature'].values, 
+                            c=range(len(lsh_df)), 
+                            cmap='viridis', alpha=0.6)
+        ax2.set_xlabel('Bucket Density')
+        ax2.set_ylabel('Temperature')
+        ax2.set_title('Temperature Adaptation to Bucket Density')
+        plt.colorbar(scatter, ax=ax2, label='Request Number')
+        
+        # Plot 3: Density components
+        ax3 = plt.subplot(3, 2, 3)
+        ax3.plot(lsh_df['bucket_density'].values, label='Bucket Density', alpha=0.7)
+        ax3.plot(lsh_df['neighbor_contribution'].values, label='Neighbor Contribution', alpha=0.7)
+        ax3.plot(lsh_df['density'].values, label='Overall Density', linewidth=2)
+        ax3.set_xlabel('Request Number')
+        ax3.set_ylabel('Density Value')
+        ax3.set_title('LSH Density Components Over Time')
+        ax3.legend()
+        ax3.grid(True, alpha=0.3)
+        
+        # Plot 4: Bucket age distribution
+        ax4 = plt.subplot(3, 2, 4)
+        bucket_ages = lsh_df['bucket_age'].values
+        ax4.hist(bucket_ages, bins=30, edgecolor='black', alpha=0.7)
+        ax4.set_xlabel('Bucket Age')
+        ax4.set_ylabel('Frequency')
+        ax4.set_title('LSH Bucket Age Distribution')
+        
+        # Plot 5: Bucket count distribution
+        ax5 = plt.subplot(3, 2, 5)
+        bucket_counts = lsh_df['bucket_count'].values
+        ax5.hist(bucket_counts, bins=30, edgecolor='black', alpha=0.7, color='orange')
+        ax5.set_xlabel('Bucket Count')
+        ax5.set_ylabel('Frequency')
+        ax5.set_title('LSH Bucket Visit Frequency')
+        
+        # Plot 6: Correlation heatmap
+        ax6 = plt.subplot(3, 2, 6)
+        
+        # Select numerical columns for correlation
+        corr_columns = ['temperature', 'bucket_density', 'neighbor_contribution', 
+                       'density', 'cache_factor', 'hamming_distance_from_last', 
+                       'bucket_age', 'bucket_count', 'bucket_reuse_rate']
+        
+        available_columns = [col for col in corr_columns if col in lsh_df.columns]
+        corr_matrix = lsh_df[available_columns].corr()
+        
+        sns.heatmap(corr_matrix, annot=True, cmap='coolwarm', center=0, 
+                    square=True, linewidths=0.5, ax=ax6, fmt='.2f')
+        ax6.set_title('LSH Metrics Correlation Matrix')
+        
+        plt.tight_layout()
+        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+        plt.close()
+    
+    def plot_lsh_adaptive_behavior(self, run_data: Dict[str, Any], save_path: str) -> None:
+        """Visualize the adaptive/annealing behavior of the LSH system"""
+        lsh_df = self.extract_lsh_debug_data(run_data)
+        
+        if lsh_df.empty:
+            print("No LSH debug data available for adaptive behavior plot")
+            return
+        
+        fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(15, 10))
+        
+        temps = lsh_df['temperature'].values
+        
+        # Plot 1: Temperature change rate
+        temp_changes = np.diff(temps)
+        ax1.plot(temp_changes, 'b-', alpha=0.5)
+        
+        # Add smoothed trend
+        window = min(50, len(temp_changes) // 5)
+        if window > 1:
+            smoothed = pd.Series(temp_changes).rolling(window).mean()
+            ax1.plot(smoothed, 'r-', linewidth=2, label=f'Smoothed ({window}-request window)')
+        
+        ax1.axhline(y=0, color='k', linestyle='--', alpha=0.5)
+        ax1.set_xlabel('Request Number')
+        ax1.set_ylabel('Temperature Change')
+        ax1.set_title('Temperature Adjustment Rate (Cooling/Heating)')
+        ax1.legend()
+        ax1.grid(True, alpha=0.3)
+        
+        # Plot 2: Phase identification
+        ax2.plot(temps, 'k-', alpha=0.3)
+        
+        # Simple phase identification
+        exploration_threshold = 1.0
+        exploitation_mask = temps <= exploration_threshold
+        exploration_mask = temps > exploration_threshold
+        
+        # Plot phases as background colors
+        for i in range(len(temps)):
+            if exploration_mask[i]:
+                ax2.axvspan(i, i+1, color='red', alpha=0.2)
+            else:
+                ax2.axvspan(i, i+1, color='blue', alpha=0.1)
+        
+        ax2.set_xlabel('Request Number')
+        ax2.set_ylabel('Temperature')
+        ax2.set_title('Exploration (red) vs Exploitation (blue) Phases')
+        ax2.grid(True, alpha=0.3)
+        
+        # Plot 3: Temperature vs bucket age
+        h = ax3.hist2d(lsh_df['bucket_age'].values, temps, bins=[20, 20], cmap='YlOrRd')
+        plt.colorbar(h[3], ax=ax3, label='Count')
+        ax3.set_xlabel('Bucket Age')
+        ax3.set_ylabel('Temperature')
+        ax3.set_title('Temperature Adaptation to Bucket Age')
+        
+        # Plot 4: Bucket reuse rate vs temperature
+        ax4.scatter(lsh_df['bucket_reuse_rate'].values, temps, 
+                   c=range(len(lsh_df)), cmap='viridis', alpha=0.6)
+        ax4.set_xlabel('Bucket Reuse Rate')
+        ax4.set_ylabel('Temperature')
+        ax4.set_title('Temperature Response to Bucket Reuse')
+        
+        plt.tight_layout()
+        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+        plt.close()
 
 # Helper function to generate a report for the latest run
 def generate_latest_run_report(log_dir: str = "cache_logs", output_dir: str = "cache_reports") -> str:
