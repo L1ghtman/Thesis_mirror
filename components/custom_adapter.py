@@ -115,14 +115,20 @@ def custom_adapt(llm_handler, cache_data_convert, update_cache_callback, *args, 
             #    func_name="temperature",
             #    report_func=chat_cache.report.temperature,
             #)(magnitude_cache, embedding_data)
-            temp_result = time_cal(
+            temp_result, lsh_debug_info = time_cal(
                 chat_cache.temperature_func,
                 func_name="temperature",
                 report_func=chat_cache.report.temperature,
             )(lsh_cache, embedding_data)
 
+            if isinstance(temp_result, tuple) and len(temp_result) >= 2:
+                temperature, lsh_debug_info = temp_result[0], temp_result[1]
+            else:
+                temperature = temp_result
+ 
             print(f"Temperature result: {temp_result}")
-            #print(f"Magnitude: {magnitude}")
+            #print("Here !!!")
+            #print(f"custom adapter Debug info: {lsh_debug_info}\n")
 
         except Exception as e:
             print(f"Error in temperature/clustering calculation: {e}")
@@ -140,9 +146,10 @@ def custom_adapt(llm_handler, cache_data_convert, update_cache_callback, *args, 
     chat_cache.last_context["temperature"] = temperature
     print(f"Storing temperature in context: {temperature}")
 
-    #context["magnitude"] = magnitude
-    #chat_cache.last_context["magnitude"] = magnitude
-    #print(f"Storing magnitude in context: {magnitude}")
+    context["lsh_debug_info"] = lsh_debug_info
+    chat_cache.last_context["lsh_debug_info"] = lsh_debug_info
+    print(f"Storing lsh_debug_info in context")
+    #print(f"Storing lsh_debug_info in context: {lsh_debug_info}")
 
     if 0 < temperature < 2:
         cache_skip_options = [True, False]

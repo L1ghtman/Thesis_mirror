@@ -48,8 +48,9 @@ class CacheLogger:
             "llm_response_times": [],
             "clustering_times": [],
             "temperature_times": [],
+            "lsh_debug_info": {},
             "requests": [],
-            "summary": {}
+            "summary": {},
         }
 
         logging.basicConfig(
@@ -94,10 +95,19 @@ class CacheLogger:
                     temperature: Optional[float] = None,
                     magnitude: Optional[float] = None,
                     cluster_id: Optional[int] = None,
+                    lsh_bucket: Optional[str] = None,
+                    bucket_density: Optional[float] = None,
+                    neighbor_contribution: Optional[float] = None,
+                    hamming_distance: Optional[float] = None,
+                    bucket_reuse_count: Optional[int] = None,
+                    debug_info: Optional[Dict[str, Any]] = None,
                     report_metrics: Dict[str, Any] = {}):
+        
+        #print(f"Debug info in log_request: {debug_info}")
         
         #self.metrics["clustering_times"].append(report_metrics.get("clustering_time", 0))
         self.metrics["temperature_times"].append(report_metrics.get("temperature_time", 0))
+        self.metrics["lsh_debug_info"] = debug_info
 
         #print(f"cluster times: {self.metrics['clustering_times']}")
         print(f"temperature times: {self.metrics['temperature_times']}")
@@ -119,6 +129,12 @@ class CacheLogger:
             if hasattr(report_metrics["semantic_cache"], "last_cluster_id"):
                 cluster_id = report_metrics["semantic_cache"].last_cluster_id
 
+        if debug_info and isinstance(debug_info, dict):
+            lsh_bucket = debug_info.get('lsh_bucket', lsh_bucket)
+            bucket_density = debug_info.get('bucket_density', bucket_density)
+            neighbor_contribution = debug_info.get('neighbor_contribution', neighbor_contribution)
+            bucket_reuse_count = debug_info.get('bucket_count', bucket_reuse_count)
+
         request_data = {
             "timestamp": datetime.now().isoformat(),
             "query": query,
@@ -128,7 +144,11 @@ class CacheLogger:
             "similarity_score": similarity_score,
             "used_cache": used_cache,
             "temperature": temperature,
-            "magnitude": magnitude
+            "magnitude": magnitude,
+            "lsh_bucket": lsh_bucket,
+            "bucket_density": bucket_density,
+            "neighbor_contribution": neighbor_contribution,
+            "bucket_reuse_count": bucket_reuse_count,
         }
 
         #if cluster_id is not None:

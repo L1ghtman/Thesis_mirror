@@ -115,7 +115,8 @@ def lsh_temperature_func(lsh_cache, embedding):
     """
     Calculate the temperature based on LSH bucket density.
     """
-    return lsh_cache.get_temperature(embedding)
+    temperature, debug_info = lsh_cache.estimate_temperature(embedding)
+    return temperature, debug_info
 
 def system_cleanup(semantic_cache, vector_base, data_manager):
     """

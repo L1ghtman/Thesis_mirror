@@ -5,9 +5,14 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
+import traceback
+import networkx as nx
+from scipy import stats
+from sklearn.decomposition import PCA
+from collections import defaultdict
+from matplotlib.gridspec import GridSpec
 from typing import List, Dict, Any, Optional, Tuple
 from datetime import datetime
-import traceback
 
 pd.set_option('future.no_silent_downcasting', True)
 
@@ -73,6 +78,9 @@ class CachePerformanceAnalyzer:
             
         # Validate and sanitize run data
         self._ensure_valid_structure(run_data)
+
+        #print("Checking run data right after loading:")
+        #print(f"cache analyzer Debug info: {run_data.get('lsh_debug_info', 'No LSH debug info')}")
             
         return run_data
     
@@ -90,7 +98,7 @@ class CachePerformanceAnalyzer:
         # Ensure required fields exist
         required_fields = [
             "start_time", "total_requests", "cache_hits", "cache_misses",
-            "positive_hits", "negative_hits", "llm_direct_calls", "temperature", "temperature_times",
+            "positive_hits", "negative_hits", "llm_direct_calls", "temperature", "temperature_times", "lsh_debug_info"
         ]
         
         for field in required_fields:
@@ -720,6 +728,10 @@ class CachePerformanceAnalyzer:
             summary = self.generate_performance_summary(run_data)
             run_id = summary.get("run_id", "Unknown")
 
+            print("####################")
+            print(run_data["lsh_debug_info"])
+            print("####################")
+
             # Prepare plots if needed
             plot_paths = {}
             if include_plots:
@@ -742,9 +754,9 @@ class CachePerformanceAnalyzer:
                 self.plot_temperature_analysis(run_data, temperature_path)
                 plot_paths["temperature"] = os.path.basename(temperature_path)
 
-                magnitude_path = os.path.join(self.output_dir, f"run_{run_id}", "embedding_magnitudes.png")
-                self.plot_embedding_magnitude_distribution(run_data, magnitude_path)
-                plot_paths["embedding_magnitudes"] = os.path.basename(magnitude_path)
+                #magnitude_path = os.path.join(self.output_dir, f"run_{run_id}", "embedding_magnitudes.png")
+                #self.plot_embedding_magnitude_distribution(run_data, magnitude_path)
+                #plot_paths["embedding_magnitudes"] = os.path.basename(magnitude_path)
 
                 # Generate the cluster analysis plot
                 #cluster_path = os.path.join(self.output_dir, f"run_{run_id}", "cluster_analysis.png")
@@ -1971,6 +1983,7 @@ def generate_latest_run_report(log_dir: str = "cache_logs", output_dir: str = "c
         analyzer = CachePerformanceAnalyzer(log_dir=log_dir, output_dir=output_dir)
         latest_run = analyzer.load_run_data()
         return analyzer.save_html_report(latest_run)
+        #return analyzer.generate_comprehensive_lsh_report(latest_run, output_dir=output_dir)
     except Exception as e:
         print(f"Error generating latest run report: {e}")
         traceback.print_exc()
