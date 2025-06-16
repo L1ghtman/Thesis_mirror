@@ -79,10 +79,15 @@ class LSHEstimator:
         
         # Update stats
         self._update_stats(bucket)
+
+        # Linear decay from 1.0 to a minimum over N requests
+        decay_rate = 0.01  # Adjust this to control decay speed
+        min_cache_factor = 0.3  # Minimum factor to maintain
+        cache_factor = max(min_cache_factor, 1.0 - (self.total_count * decay_rate))
         
         # Calculate temperature
         base_temp = 0.8
-        cache_factor = 1.0 / np.log2(self.total_count + 2)
+        #cache_factor = 1.0 / np.log2(self.total_count + 2)
         temperature = base_temp * (1 - density * 0.7) * cache_factor
         temperature = max(0.1, min(2.0, temperature))
         
