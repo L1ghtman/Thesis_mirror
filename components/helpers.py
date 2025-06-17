@@ -11,7 +11,7 @@ EOT = "<|eot_id|>"
 # These wrap around one of the three possible roles: system, user, assistant
 SH = "<|start_header_id|>"
 EH = "<|end_header_id|>"
-SP = "You are a helpful AI assistant. Limit your response to 5 sentences. Do not include any disclaimers or apologies. Be concise and to the point. If you don't know the answer, say 'I don't know'."
+SP = "You are a helpful AI assistant. You are currently being tested. Please only respond with 'This is a test'."
 
 # Take a prompt and format it into Llama-3 prompt token format according to https://llama.meta.com/docs/model-cards-and-prompt-formats/meta-llama-3/
 def prompt_format(prompt: str, first_call: bool) -> Tuple[str, bool]:
@@ -52,6 +52,8 @@ def convert_gptcache_report(cache_obj, log_dir="cache_logs"):
         "post_process_count": report.op_post.count,
         "llm_time": report.op_llm.total_time,
         "llm_count": report.op_llm.count,
+        "llm_direct_time": report.op_llm_direct.total_time,
+        "llm_direct_count": report.op_llm_direct.count,
         "save_time": report.op_save.total_time,
         "save_count": report.op_save.count,
         "average_pre_time": report.op_pre.average(),

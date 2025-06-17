@@ -11,6 +11,7 @@ class Report:
         self.op_evaluation = OpCounter()
         self.op_post = OpCounter()
         self.op_llm = OpCounter()
+        self.op_llm_direct = OpCounter()
         self.op_save = OpCounter()
         self.hint_cache_count = 0
 
@@ -84,6 +85,16 @@ class Report:
 
         :param delta_time: additional runtime.
         """
+        self.op_llm.total_time += delta_time
+        self.op_llm.count += 1
+
+    def llm_direct(self, delta_time):
+        """LLM direct counts and time.
+
+        :param delta_time: additional runtime.
+        """
+        self.op_llm_direct.total_time += delta_time
+        self.op_llm_direct.count += 1
         self.op_llm.total_time += delta_time
         self.op_llm.count += 1
 

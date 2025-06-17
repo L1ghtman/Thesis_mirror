@@ -85,6 +85,8 @@ def process_request(question, cached_llm, semantic_cache, CacheLogger, use_cache
 
     response_time = time.time() - start_time
     report_metrics = helpers.convert_gptcache_report(semantic_cache)
+
+    print(f"Direct LLM calls: {semantic_cache.report.op_llm_direct.count}")
     
     CacheLogger.log_request(
         query=question,

@@ -76,9 +76,9 @@ def custom_adapt(llm_handler, cache_data_convert, update_cache_callback, *args, 
     print(f"Cache size: {cache_size}")
 
     # Set base temperature inverse to overall cache size
-    if cache_size > 0:
-        temperature = 2.0 / cache_size
-    print(f"Base temperature: {temperature}")
+    #if cache_size > 0:
+    #    temperature = 2.0 / cache_size
+    #print(f"Base temperature: {temperature}")
 
     # Initialize cluster_id to None - this handles the case where clustering fails
     cluster_id = None
@@ -137,10 +137,10 @@ def custom_adapt(llm_handler, cache_data_convert, update_cache_callback, *args, 
         chat_cache.last_context = {}
 
     # Store cluster ID in context if available
-    if cluster_id is not None:
-        context["cluster_id"] = cluster_id
-        chat_cache.last_context["cluster_id"] = cluster_id
-        print(f"Storing cluster ID in context: {cluster_id}")
+    #if cluster_id is not None:
+    #    context["cluster_id"] = cluster_id
+    #    chat_cache.last_context["cluster_id"] = cluster_id
+    #    print(f"Storing cluster ID in context: {cluster_id}")
 
     context["temperature"] = temperature
     chat_cache.last_context["temperature"] = temperature
@@ -166,6 +166,9 @@ def custom_adapt(llm_handler, cache_data_convert, update_cache_callback, *args, 
         cache_skip = kwargs.pop("cache_skip", True)
     else:  # temperature <= 0
         cache_skip = kwargs.pop("cache_skip", False)
+
+    # For testing:
+    #cache_skip = True
 
     print(f"Cache skip: {cache_skip}")
 
@@ -334,9 +337,16 @@ def custom_adapt(llm_handler, cache_data_convert, update_cache_callback, *args, 
         if search_only_flag:
             # cache miss
             return None
-        llm_data = time_cal(
-            llm_handler, func_name="llm_request", report_func=chat_cache.report.llm
-        )(*args, **kwargs)
+        if cache_skip:
+            # cache skip
+            llm_data = time_cal(
+                llm_handler, func_name="llm_request", report_func=chat_cache.report.llm_direct
+            )(*args, **kwargs)
+        else:
+            llm_data = time_cal(
+                llm_handler, func_name="llm_request", report_func=chat_cache.report.llm
+            )(*args, **kwargs)
+
 
     if not llm_data:
         return None

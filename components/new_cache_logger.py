@@ -109,6 +109,10 @@ class CacheLogger:
         self.metrics["temperature_times"].append(report_metrics.get("temperature_time", 0))
         self.metrics["lsh_debug_info"].append(debug_info if debug_info else {})
 
+        self.metrics["llm_direct_calls"] = report_metrics.get("llm_direct_count", 0)
+
+        print(f"Cache Logger Direct LLM calls: {self.metrics['llm_direct_calls']}")
+
         #print(f"cluster times: {self.metrics['clustering_times']}")
         print(f"temperature times: {self.metrics['temperature_times']}")
 
@@ -175,6 +179,8 @@ class CacheLogger:
 
         #print(f"avg cluster times: {avg_cluster_time}")
         print(f"avg temperature times: {avg_temperature_time}")
+
+        print(f"Cache logger summary llm direct calls: {self.metrics['llm_direct_calls']}")
 
         avg_embedding_time = self.metrics["embedding_time"] / self.metrics["embedding_count"] if self.metrics["embedding_count"] else 0
         avg_search_time = self.metrics["search_time"] / self.metrics["search_count"] if self.metrics["search_count"] else 0
