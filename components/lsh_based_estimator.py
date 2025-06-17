@@ -1,3 +1,4 @@
+import math
 import numpy as np
 from collections import defaultdict, deque
 from typing import Tuple, List, Dict, Any
@@ -85,25 +86,30 @@ class LSHEstimator:
         # min_cache_factor = 0.3  # Minimum factor to maintain
         # cache_factor = max(min_cache_factor, 1.0 - (self.total_count * decay_rate))
 
-        warmup_requests = 50  # Number of requests before decay starts
-        decay_requests = 500  # Number of requests for full decay
-        
-        if self.total_count < warmup_requests:
-            cache_factor = 1.0
-        else:
-            progress = (self.total_count - warmup_requests) / decay_requests
-            cache_factor = max(0.3, 1.0 - (0.7 * min(1.0, progress)))
-        
-        # Calculate temperature
-        base_temp = 0.8
-        #cache_factor = 1.0 / np.log2(self.total_count + 2)
-        temperature = base_temp * (1 - density * 0.7) * cache_factor
-        temperature = max(0.1, min(2.0, temperature))
+        # warmup_requests = 50  # Number of requests before decay starts
+        # decay_requests = 500  # Number of requests for full decay
+        # 
+        # if self.total_count < warmup_requests:
+        #     cache_factor = 1.0
+        # else:
+        #     progress = (self.total_count - warmup_requests) / decay_requests
+        #     cache_factor = max(0.3, 1.0 - (0.7 * min(1.0, progress)))
+        # 
+        # # Calculate temperature
+        # base_temp = 0.8
+        # #cache_factor = 1.0 / np.log2(self.total_count + 2)
+        # temperature = base_temp * (1 - density * 0.7) * cache_factor
+        # temperature = max(0.1, min(2.0, temperature))
+
+        # Exponential with sensitivity
+        sensitivity = 2.0
+        temperature = 2.0 * math.exp(-sensitivity * density)
         
         # Track temperature for this bucket
         self.tracking_data['bucket_temperatures'][bucket].append(temperature)
         self.tracking_data['bucket_densities'][bucket].append(density)
         
+        cache_factor = 3.141
         # Enhanced debug info
         debug_info = {
             "lsh_bucket": bucket,
