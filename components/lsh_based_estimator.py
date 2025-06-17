@@ -81,9 +81,18 @@ class LSHEstimator:
         self._update_stats(bucket)
 
         # Linear decay from 1.0 to a minimum over N requests
-        decay_rate = 0.01  # Adjust this to control decay speed
-        min_cache_factor = 0.3  # Minimum factor to maintain
-        cache_factor = max(min_cache_factor, 1.0 - (self.total_count * decay_rate))
+        # decay_rate = 0.01  # Adjust this to control decay speed
+        # min_cache_factor = 0.3  # Minimum factor to maintain
+        # cache_factor = max(min_cache_factor, 1.0 - (self.total_count * decay_rate))
+
+        warmup_requests = 50  # Number of requests before decay starts
+        decay_requests = 500  # Number of requests for full decay
+        
+        if self.total_count < warmup_requests:
+            cache_factor = 1.0
+        else:
+            progress = (self.total_count - warmup_requests) / decay_requests
+            cache_factor = max(0.3, 1.0 - (0.7 * min(1.0, progress)))
         
         # Calculate temperature
         base_temp = 0.8
