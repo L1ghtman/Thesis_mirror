@@ -79,14 +79,14 @@ def process_request(question, cached_llm, semantic_cache, CacheLogger, use_cache
         hamming_distance = sum(c1 != c2 for c1, c2 in zip(current_bucket, last_bucket))
 
     print(f"temperature: {temperature}")
-    if lsh_debug_info:
+    #if lsh_debug_info:
         #print(f"LSH Debug: {lsh_debug_info}")
-        print("Got LSH debug info")
+        #print("Got LSH debug info")
 
     response_time = time.time() - start_time
     report_metrics = helpers.convert_gptcache_report(semantic_cache)
 
-    print(f"Direct LLM calls: {semantic_cache.report.op_llm_direct.count}")
+    #print(f"Direct LLM calls: {semantic_cache.report.op_llm_direct.count}")
     
     CacheLogger.log_request(
         query=question,

@@ -102,8 +102,12 @@ class LSHEstimator:
         # temperature = max(0.1, min(2.0, temperature))
 
         # Exponential with sensitivity
-        sensitivity = 2.0
-        temperature = 2.0 * math.exp(-sensitivity * density)
+        #sensitivity = 2.0
+        #temperature = 2.0 * math.exp(-sensitivity * density)
+
+        # Rational with decay rate
+        decay_rate = 5
+        temperature = 2.0 / (1 + decay_rate * density)
         
         # Track temperature for this bucket
         self.tracking_data['bucket_temperatures'][bucket].append(temperature)

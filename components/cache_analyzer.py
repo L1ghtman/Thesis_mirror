@@ -260,7 +260,7 @@ class CachePerformanceAnalyzer:
             positive_hits = len(df[(df["cache_hit"] == True) & (df["positive_hit"] == True)])
             negative_hits = len(df[(df["cache_hit"] == True) & (df["positive_hit"] == False)])
             #llm_direct_calls = len(df[df["used_cache"] == False])
-            
+
             
             # Get response times
             cache_response_times = df[(df["cache_hit"] == True)]["response_time"].tolist()
@@ -729,9 +729,9 @@ class CachePerformanceAnalyzer:
             summary = self.generate_performance_summary(run_data)
             run_id = summary.get("run_id", "Unknown")
 
-            print("####################")
-            print(run_data["lsh_debug_info"])
-            print("####################")
+            #print("####################")
+            #print(run_data["lsh_debug_info"])
+            #print("####################")
 
             # Prepare plots if needed
             plot_paths = {}
