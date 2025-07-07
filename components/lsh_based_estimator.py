@@ -7,7 +7,7 @@ import time
 from datetime import datetime
 
 class LSHEstimator:
-    def __init__(self, embedding_dim=384, num_hyperplanes=8, window_size=1000):
+    def __init__(self, embedding_dim=384, num_hyperplanes=16, window_size=1000):
         # Original LSH components
         self.num_hyperplanes = num_hyperplanes
         self.hyperplanes = np.random.randn(num_hyperplanes, embedding_dim)

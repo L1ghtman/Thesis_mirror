@@ -168,7 +168,7 @@ def custom_adapt(llm_handler, cache_data_convert, update_cache_callback, *args, 
         cache_skip = kwargs.pop("cache_skip", False)
 
     # For testing:
-    #cache_skip = True
+    cache_skip = True
 
     print(f"Cache skip: {cache_skip}")
 

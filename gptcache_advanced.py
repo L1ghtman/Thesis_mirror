@@ -10,6 +10,7 @@ import multiprocessing
 from components.dataset_manager import DatasetManager
 from gptcache.processor.pre import get_prompt
 from gptcache.manager import CacheBase, VectorBase
+from gptcache.manager.eviction import EvictionBase
 from gptcache.adapter.langchain_models import LangChainLLMs
 from gptcache.similarity_evaluation import SbertCrossencoderEvaluation
 from gptcache.manager import get_data_manager
@@ -127,7 +128,9 @@ def main():
         cache_base = CacheBase("sqlite",
                                sql_url=f"sqlite:///{os.path.join(CACHE_DIR, 'cache.db')}")
         vector_base = VectorBase("faiss", **vector_params)
-        data_manager = get_data_manager(cache_base, vector_base)
+        #eviction_base = EvictionBase("dynamc_eviction")
+        eviction_base = EvictionBase("memory", policy="LRU", maxsize=5, clean_size=1)
+        data_manager = get_data_manager(cache_base, vector_base, eviction_base="dynamic_eviction")
 
         # DatasetManager setup
         manager = DatasetManager()
@@ -144,7 +147,7 @@ def main():
 
         partial_questions = []
 
-        for q in questions[:1]:
+        for q in questions[:10]:
             partial_questions.append(q["question"])
 
         test_questions = [
