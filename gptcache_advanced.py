@@ -129,8 +129,9 @@ def main():
                                sql_url=f"sqlite:///{os.path.join(CACHE_DIR, 'cache.db')}")
         vector_base = VectorBase("faiss", **vector_params)
         #eviction_base = EvictionBase("dynamc_eviction")
-        eviction_base = EvictionBase("memory", policy="LRU", maxsize=5, clean_size=1)
-        data_manager = get_data_manager(cache_base, vector_base, eviction_base="dynamic_eviction")
+        #eviction_base = EvictionBase("memory", policy="LRU", maxsize=5, clean_size=1)
+        data_manager = get_data_manager(cache_base, vector_base, eviction_base=EvictionBase("dynamic_eviction"))
+        #data_manager = get_data_manager(cache_base, vector_base, eviction_base="dynamic_eviction")
 
         # DatasetManager setup
         manager = DatasetManager()
@@ -147,7 +148,7 @@ def main():
 
         partial_questions = []
 
-        for q in questions[:10]:
+        for q in questions[:3]:
             partial_questions.append(q["question"])
 
         test_questions = [
