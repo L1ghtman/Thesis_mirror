@@ -8,8 +8,15 @@ class EvictionManager:
     :type vector_base:  :class:`VectorBase`
     """
 
-    MAX_MARK_COUNT = 5000
-    MAX_MARK_RATE = 0.1
+    # original
+    #MAX_MARK_COUNT = 5000
+    #MAX_MARK_RATE = 0.1
+    #BATCH_SIZE = 100000
+    #REBUILD_CONDITION = 5    
+    
+    # for testing 
+    MAX_MARK_COUNT = 1
+    MAX_MARK_RATE = 0.01
     BATCH_SIZE = 100000
     REBUILD_CONDITION = 5
 

@@ -19,8 +19,8 @@ class EvictionBase:
     def get(
         name: str,
         policy: str = "LRU",
-        maxsize: int = 1000,
-        clean_size: int = 0,
+        maxsize: int = 2,
+        clean_size: int = 1,
         on_evict: Callable[[List[Any]], None] = None,
         **kwargs
     ):
@@ -28,7 +28,7 @@ class EvictionBase:
             clean_size = int(maxsize * 0.2)
         if name in "memory":
             from gptcache.manager.eviction.memory_cache import MemoryCacheEviction
-
+            print("--- Using 'memory' ---")
             eviction_base = MemoryCacheEviction(
                 policy, maxsize, clean_size, on_evict, **kwargs
             )

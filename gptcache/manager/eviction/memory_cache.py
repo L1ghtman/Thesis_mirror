@@ -35,12 +35,15 @@ class MemoryCacheEviction(EvictionBase):
     def __init__(
             self,
             policy: str = "LRU",
-            maxsize: int = 1000,
+            maxsize: int = 3,
             clean_size: int = 0,
             on_evict: Callable[[List[Any]], None] = None,
             **kwargs,
     ):
         self._policy = policy.upper()
+
+        print(f"--- Policy set to '{self._policy}' ---")
+
         if self._policy == "LRU":
             self._cache = cachetools.LRUCache(maxsize=maxsize, **kwargs)
         elif self._policy == "LFU":

@@ -5,6 +5,19 @@ from collections import OrderedDict
 from gptcache.manager.eviction.base import EvictionBase
 
 class DynamicCache:
+    #def __init__(self, maxsize: int = 1000, **kwargs):
+    #    print(f"--- Initializing dynamic cache with maxsize {maxsize} ---")
+    #    self.maxsize = maxsize
+    #    self._data: Dict[Any, Any] = {}
+    #    self._access_times: Dict[Any, float] = {}
+    #    self._access_counts: Dict[Any, int] = {}
+    #    self._insertion_order = OrderedDict()
+
+    #    self.temperature = kwargs.get('temperature', 1.0)
+    #    self.decay_factor = kwargs.get('decay_factor', 0.95)
+
+    #    self._on_evict = kwargs.get('on_evict', None)
+
     def __init__(self, maxsize: int = 1000, **kwargs):
         print(f"--- Initializing dynamic cache with maxsize {maxsize} ---")
         self.maxsize = maxsize
@@ -12,9 +25,14 @@ class DynamicCache:
         self._access_times: Dict[Any, float] = {}
         self._access_counts: Dict[Any, int] = {}
         self._insertion_order = OrderedDict()
-
+        
         self.temperature = kwargs.get('temperature', 1.0)
         self.decay_factor = kwargs.get('decay_factor', 0.95)
+        
+        # CRITICAL: Store and verify the callback
+        self._on_evict = kwargs.get('on_evict', None)
+        print(f"[DEBUG] on_evict callback received: {self._on_evict}")
+        print(f"[DEBUG] Type of on_evict: {type(self._on_evict)}")
 
     def __getitem__(self, key):
         if key not in self._data:
@@ -22,13 +40,49 @@ class DynamicCache:
         self._update_access_stats(key)
         return self._data[key]
     
+    #def __setitem__(self, key, value):
+    #    if key in self._data:
+    #        self._data[key] = value
+    #        self._update_access_stats(key)
+    #        return
+    #    if len(self._data) >= self.maxsize:
+    #        self._evict_items(1)
+    #    self._data[key] = value
+    #    self._access_times[key] = time.time()
+    #    self._access_counts[key] = 1
+    #    self._insertion_order[key] = True
+
     def __setitem__(self, key, value):
+        print(f"\n[DEBUG] __setitem__ called with key={key}, value={value}")
+        print(f"[DEBUG] Current size: {len(self._data)}, maxsize: {self.maxsize}")
+        print(f"[DEBUG] Current keys: {list(self._data.keys())}")
+        
         if key in self._data:
             self._data[key] = value
             self._update_access_stats(key)
             return
+    
+        # Evict BEFORE adding if at capacity
         if len(self._data) >= self.maxsize:
-            self._evict_items()
+            print(f"[DEBUG] Cache full, need to evict")
+            print(f"[DEBUG] self._on_evict is: {self._on_evict}")
+            victim_key = self._select_eviction_victim()
+            if victim_key is not None:
+                # Remove from cache
+                del self._data[victim_key]
+                del self._access_times[victim_key]
+                del self._access_counts[victim_key]
+                if victim_key in self._insertion_order:
+                    del self._insertion_order[victim_key]
+
+                # CRITICAL: Call on_evict NOW!
+                if self._on_evict:
+                    print(f"[DEBUG] Calling on_evict with victim key: {victim_key}")
+                    self._on_evict([victim_key])
+                else:
+                    print(f"[DEBUG] WARNING: on_evict is None!")
+    
+        # Now add new item
         self._data[key] = value
         self._access_times[key] = time.time()
         self._access_counts[key] = 1
@@ -70,11 +124,16 @@ class DynamicCache:
     def popitem(self):
         if not self._data:
             raise KeyError('popitem(): dictonary is empty')
+        victim_key = self._select_eviction_victim()
+        if victim_key:
+            value = self._data[victim_key]
+            del self[victim_key]
+            return (victim_key, value)
         oldest_key = min(self._access_times, key=self._access_times.get)
         value = self._data[oldest_key]
         del self[oldest_key]
         return (oldest_key, value)
-
+ 
     def _update_access_stats(self, key):
         self._access_times[key] = time.time()
         self._access_counts[key] = self._access_counts.get(key, 0) + 1
@@ -82,11 +141,15 @@ class DynamicCache:
     def _evict_items(self, num_items: int = 1):
         if len(self._data) == 0:
             return
+        evicted_keys = []
         for _ in range(min(num_items, len(self._data))):
             victim_key = self._select_eviction_victim()
             if victim_key:
+                evicted_keys.append(victim_key)
                 del self[victim_key]
-
+        if self._on_evict and evicted_keys:
+            print("Calling on_evict with keys: {evicted_keys}")
+            self._on_evict(evicted_keys)
 
     def _select_eviction_victim(self) -> Optional[Any]:
         # TODO: Implement eviction policy here
@@ -157,7 +220,7 @@ class DynamicEviction(EvictionBase):
     ):
         self._policy = policy.upper()
         if self._policy == "DYN":
-            self._cache = DynamicCache(maxsize=maxsize, **kwargs)
+            self._cache = DynamicCache(maxsize=maxsize, on_evict=on_evict, **kwargs)
         else:
             raise ValueError(f"Unknown policy {policy}")
 

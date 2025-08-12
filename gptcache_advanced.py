@@ -18,6 +18,7 @@ from gptcache.core import Cache
 from components.cache_utils import embedding_func, system_cleanup, magnitude_temperature_func, lsh_temperature_func
 #from components.cluster_aware_cache import ClusterAwareCache
 #from components.mini_batch_kmeans import MiniBatchKMeansClustering
+from get_cache_info import check_faiss_index
 
 os.environ['OBJC_DISABLE_INITIALIZE_FORK_SAFETY'] = 'YES'
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -129,9 +130,10 @@ def main():
                                sql_url=f"sqlite:///{os.path.join(CACHE_DIR, 'cache.db')}")
         vector_base = VectorBase("faiss", **vector_params)
         #eviction_base = EvictionBase("dynamc_eviction")
-        #eviction_base = EvictionBase("memory", policy="LRU", maxsize=5, clean_size=1)
-        data_manager = get_data_manager(cache_base, vector_base, eviction_base=EvictionBase("dynamic_eviction"))
-        #data_manager = get_data_manager(cache_base, vector_base, eviction_base="dynamic_eviction")
+        eviction_base = EvictionBase("memory", policy="LRU", maxsize=5, clean_size=1)
+        #data_manager = get_data_manager(cache_base, vector_base, eviction_base=EvictionBase("dynamic_eviction"))
+        #data_manager = get_data_manager(cache_base, vector_base, eviction_base=EvictionBase("dynamic_eviction"))
+        data_manager = get_data_manager(cache_base, vector_base, eviction_base)
 
         # DatasetManager setup
         manager = DatasetManager()
@@ -191,6 +193,7 @@ def main():
             for question in partial_questions:
                 print(f"Processing question: {question}")
                 process_request(question, cached_llm, semantic_cache, CacheLogger, use_cache=True, llm=llm)
+                #check_faiss_index()
             CacheLogger.close()
             report_path = cache_analyzer.generate_latest_run_report(log_dir="cache_logs")
             print(f"Performance report saved to: {report_path}")
