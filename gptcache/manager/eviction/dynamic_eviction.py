@@ -213,14 +213,15 @@ class DynamicEviction(EvictionBase):
     def __init__(
             self,
             policy: str = "DYN",
-            maxsize: int = 2,
+            maxsize: int = 1000,
             clean_size: int = 0,
             on_evict: Callable[[List[Any]], None] = None,
             **kwargs,
     ):
         self._policy = policy.upper()
         if self._policy == "DYN":
-            self._cache = DynamicCache(maxsize=maxsize, on_evict=on_evict, **kwargs)
+            self._cache = DynamicCache(maxsize=maxsize, **kwargs)
+            print(f"[INFO] initialized DynamicCache with maxsize {maxsize}")
         else:
             raise ValueError(f"Unknown policy {policy}")
 

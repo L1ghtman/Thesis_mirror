@@ -22,6 +22,18 @@ from gptcache.utils.error import CacheError, ParamError
 from gptcache.utils.log import gptcache_log
 
 
+def popitem_wrapper(func, wrapper_func, clean_size):
+    def wrapper(*args, **kwargs):
+        keys = []
+        try:
+            keys = [func(*args, **kwargs)[0] for _ in range(clean_size)]
+        except KeyError:
+            pass
+        wrapper_func(keys)
+
+    return wrapper
+
+
 class DataManager(metaclass=ABCMeta):
     """DataManager manage the cache data, including save and search"""
 
@@ -236,11 +248,20 @@ class SSDataManager(DataManager):
         self.eviction_manager = EvictionManager(self.s, self.v)
         if e is None:
             e = EvictionBase(name="memory",
-                             maxsize=max_size,
+                             # original
+                             #maxsize=max_size,
+                             # for testing 
+                             maxsize=5,
                              clean_size=clean_size,
                              policy=policy,
                              on_evict=self._clear)
+            print("SSDataManager initialized with EvictionManager on_evict")
         self.eviction_base = e
+
+#        if hasattr(self.eviction_base, '_cache') and hasattr(self.eviction_base._cache, 'popitem'):
+#            self.eviction_base._cache.popitem = popitem_wrapper(
+#                self.eviction_base._cache.popitem, self._clear, clean_size
+#            )
 
         if not isinstance(self.eviction_base, NoOpEviction):
             # if eviction manager is no op redis, we don't need to put data into eviction base

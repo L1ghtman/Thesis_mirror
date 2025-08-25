@@ -55,6 +55,9 @@ class MemoryCacheEviction(EvictionBase):
         else:
             raise ValueError(f"Unknown policy {policy}")
 
+        if not on_evict:
+            self.eviction_manager = EvictionManager()
+
         self._cache.popitem = popitem_wrapper(self._cache.popitem, on_evict, clean_size)
 
     def put(self, objs: List[Any]):
