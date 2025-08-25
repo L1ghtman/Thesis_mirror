@@ -46,6 +46,7 @@ class EvictionBase:
         if name == "dynamic_eviction":
             from gptcache.manager.eviction.dynamic_eviction import DynamicEviction
             print("Dynamic Eviction debug message lol")
+            print(f"maxsize: {maxsize}")
             eviction_base = DynamicEviction(
                 policy="dyn", maxsize=maxsize, clean_size=clean_size, on_evict=on_evict, **kwargs
             )

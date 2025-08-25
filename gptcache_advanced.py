@@ -16,6 +16,7 @@ from gptcache.similarity_evaluation import SbertCrossencoderEvaluation
 from gptcache.manager import get_data_manager
 from gptcache.core import Cache
 from components.cache_utils import embedding_func, system_cleanup, magnitude_temperature_func, lsh_temperature_func
+from inspect_faiss import inspect_faiss_index
 #from components.cluster_aware_cache import ClusterAwareCache
 #from components.mini_batch_kmeans import MiniBatchKMeansClustering
 
@@ -129,9 +130,15 @@ def main():
                                sql_url=f"sqlite:///{os.path.join(CACHE_DIR, 'cache.db')}")
         vector_base = VectorBase("faiss", **vector_params)
         #eviction_base = EvictionBase("dynamc_eviction")
-        #eviction_base = EvictionBase("memory", policy="LRU", maxsize=5, clean_size=1)
-        data_manager = get_data_manager(cache_base, vector_base, eviction_base=EvictionBase("dynamic_eviction"))
-        #data_manager = get_data_manager(cache_base, vector_base, eviction_base="dynamic_eviction")
+        
+        # For testing memory eviction
+        #data_manager = get_data_manager(cache_base, vector_base, eviction_base=EvictionBase("memory", policy="LRU", maxsize=5, clean_size=1))
+
+        # For testing memory eviction with default 'on_evict'
+        data_manager = get_data_manager(cache_base, vector_base)
+
+        # For testing dynamic eviction
+        #data_manager = get_data_manager(cache_base, vector_base, eviction_base=EvictionBase("dynamic_eviction", maxsize=4))
 
         # DatasetManager setup
         manager = DatasetManager()
@@ -148,7 +155,7 @@ def main():
 
         partial_questions = []
 
-        for q in questions[:3]:
+        for q in questions[800:808]:
             partial_questions.append(q["question"])
 
         test_questions = [
@@ -191,6 +198,7 @@ def main():
             for question in partial_questions:
                 print(f"Processing question: {question}")
                 process_request(question, cached_llm, semantic_cache, CacheLogger, use_cache=True, llm=llm)
+                inspect_faiss_index('./persistent_cache/faiss.index')
             CacheLogger.close()
             report_path = cache_analyzer.generate_latest_run_report(log_dir="cache_logs")
             print(f"Performance report saved to: {report_path}")
