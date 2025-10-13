@@ -12,7 +12,8 @@ def popitem_wrapper(func, wrapper_func, clean_size):
             keys = [func(*args, **kwargs)[0] for _ in range(clean_size)]
         except KeyError:
             pass
-        wrapper_func(keys)
+        if wrapper_func is not None:
+            wrapper_func(keys)
 
     return wrapper
 
@@ -55,8 +56,8 @@ class MemoryCacheEviction(EvictionBase):
         else:
             raise ValueError(f"Unknown policy {policy}")
 
-        if not on_evict:
-            self.eviction_manager = EvictionManager()
+#        if not on_evict:
+#            self.eviction_manager = EvictionManager()
 
         self._cache.popitem = popitem_wrapper(self._cache.popitem, on_evict, clean_size)
 

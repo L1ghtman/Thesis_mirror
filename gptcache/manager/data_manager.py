@@ -29,7 +29,8 @@ def popitem_wrapper(func, wrapper_func, clean_size):
             keys = [func(*args, **kwargs)[0] for _ in range(clean_size)]
         except KeyError:
             pass
-        wrapper_func(keys)
+        if wrapper_func is not None:
+            wrapper_func(keys)
 
     return wrapper
 
@@ -247,16 +248,22 @@ class SSDataManager(DataManager):
         self.o = o
         self.eviction_manager = EvictionManager(self.s, self.v)
         if e is None:
-            e = EvictionBase(name="memory",
-                             # original
-                             #maxsize=max_size,
+            e = EvictionBase(# original
+                            #name="memory",
+                            #maxsize=max_size,
                              # for testing 
+                             name="dynamic_eviction",
                              maxsize=5,
                              clean_size=clean_size,
                              policy=policy,
                              on_evict=self._clear)
             print("SSDataManager initialized with EvictionManager on_evict")
+        
+    #    if e is not None and e.on_evict is None:
+    #        e.on_evict = self._clear
+
         self.eviction_base = e
+
 
 #        if hasattr(self.eviction_base, '_cache') and hasattr(self.eviction_base._cache, 'popitem'):
 #            self.eviction_base._cache.popitem = popitem_wrapper(
@@ -268,6 +275,7 @@ class SSDataManager(DataManager):
             self.eviction_base.put(self.s.get_ids(deleted=False))
 
     def _clear(self, marked_keys):
+        print("[DEBUG] used _clear() <-------")
         self.eviction_manager.soft_evict(marked_keys)
         if self.eviction_manager.check_evict():
             self.eviction_manager.delete()

@@ -16,7 +16,7 @@ from gptcache.similarity_evaluation import SbertCrossencoderEvaluation
 from gptcache.manager import get_data_manager
 from gptcache.core import Cache
 from components.cache_utils import embedding_func, system_cleanup, magnitude_temperature_func, lsh_temperature_func
-from inspect_faiss import inspect_faiss_index
+#from inspect_faiss import inspect_faiss_index
 #from components.cluster_aware_cache import ClusterAwareCache
 #from components.mini_batch_kmeans import MiniBatchKMeansClustering
 from get_cache_info import check_faiss_index
@@ -199,7 +199,7 @@ def main():
             for question in partial_questions:
                 print(f"Processing question: {question}")
                 process_request(question, cached_llm, semantic_cache, CacheLogger, use_cache=True, llm=llm)
-                inspect_faiss_index('./persistent_cache/faiss.index')
+                #inspect_faiss_index('./persistent_cache/faiss.index')
             CacheLogger.close()
             report_path = cache_analyzer.generate_latest_run_report(log_dir="cache_logs")
             print(f"Performance report saved to: {report_path}")

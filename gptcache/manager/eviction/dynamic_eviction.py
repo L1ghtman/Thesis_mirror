@@ -4,7 +4,9 @@ import random
 from collections import OrderedDict
 from gptcache.manager.eviction.base import EvictionBase
 
-class DynamicCache:
+from components.customcache import DynamicCache
+
+class OldDynamicCacheO:
     #def __init__(self, maxsize: int = 1000, **kwargs):
     #    print(f"--- Initializing dynamic cache with maxsize {maxsize} ---")
     #    self.maxsize = maxsize
@@ -18,7 +20,16 @@ class DynamicCache:
 
     #    self._on_evict = kwargs.get('on_evict', None)
 
-    def __init__(self, maxsize: int = 1000, **kwargs):
+    def __init__(
+            self, 
+            policy: str = "DYN",
+            maxsize: int = 1000, 
+            clean_size: int = 1,
+            on_evict: Callable[[List[Any]], None] = None,
+            **kwargs
+    ):
+        self._policy = policy.upper()
+
         print(f"--- Initializing dynamic cache with maxsize {maxsize} ---")
         self.maxsize = maxsize
         self._data: Dict[Any, Any] = {}
@@ -31,8 +42,8 @@ class DynamicCache:
         
         # CRITICAL: Store and verify the callback
         self._on_evict = kwargs.get('on_evict', None)
-        print(f"[DEBUG] on_evict callback received: {self._on_evict}")
-        print(f"[DEBUG] Type of on_evict: {type(self._on_evict)}")
+        print(f"[DEBUG] (dynamic_eviction.py > DynamicCache > __init__) on_evict callback received: {self._on_evict}")
+        print(f"[DEBUG] (dynamic_eviction.py > DynamicCache > __init__) Type of on_evict: {type(self._on_evict)}")
 
     def __getitem__(self, key):
         if key not in self._data:
@@ -53,9 +64,9 @@ class DynamicCache:
     #    self._insertion_order[key] = True
 
     def __setitem__(self, key, value):
-        print(f"\n[DEBUG] __setitem__ called with key={key}, value={value}")
-        print(f"[DEBUG] Current size: {len(self._data)}, maxsize: {self.maxsize}")
-        print(f"[DEBUG] Current keys: {list(self._data.keys())}")
+        print(f"\n[DEBUG] (dynamic_eviction.py > DynamicCache > __setitem__) __setitem__ called with key={key}, value={value}")
+        print(f"[DEBUG] (dynamic_eviction.py > DynamicCache > __setitem__) Current size: {len(self._data)}, maxsize: {self.maxsize}")
+        print(f"[DEBUG] (dynamic_eviction.py > DynamicCache > __setitem__) Current keys: {list(self._data.keys())}")
         
         if key in self._data:
             self._data[key] = value
@@ -64,8 +75,8 @@ class DynamicCache:
     
         # Evict BEFORE adding if at capacity
         if len(self._data) >= self.maxsize:
-            print(f"[DEBUG] Cache full, need to evict")
-            print(f"[DEBUG] self._on_evict is: {self._on_evict}")
+            print(f"[DEBUG] (dynamic_eviction.py > DynamicCache > __setitem__) Cache full, need to evict")
+            print(f"[DEBUG] (dynamic_eviction.py > DynamicCache > __setitem__) self._on_evict is: {self._on_evict}")
             victim_key = self._select_eviction_victim()
             if victim_key is not None:
                 # Remove from cache
@@ -77,10 +88,10 @@ class DynamicCache:
 
                 # CRITICAL: Call on_evict NOW!
                 if self._on_evict:
-                    print(f"[DEBUG] Calling on_evict with victim key: {victim_key}")
+                    print(f"[DEBUG] (dynamic_eviction.py > DynamicCache > __setitem__) Calling on_evict with victim key: {victim_key}")
                     self._on_evict([victim_key])
                 else:
-                    print(f"[DEBUG] WARNING: on_evict is None!")
+                    print(f"[DEBUG] (dynamic_eviction.py > DynamicCache > __setitem__) WARNING: on_evict is None!")
     
         # Now add new item
         self._data[key] = value
