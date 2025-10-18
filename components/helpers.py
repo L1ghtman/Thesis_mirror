@@ -2,6 +2,7 @@ import time
 
 from datetime import datetime
 from typing import Tuple
+from config_manager import Config
 
 # Llama-3 prompt tokens
 BOS = "<|begin_of_text|>"
@@ -82,3 +83,107 @@ def track_request(question, response, start_time, is_cache_hit, similarity_score
         "temperature": temperature
     }
     return request_data
+
+def process_request(question, cached_llm, semantic_cache, CacheLogger, use_cache):
+    """
+    Send a request to the cache and log the response.
+    
+    Args:
+        question: The question to ask
+        cached_llm: The cached LLM instance
+        semantic_cache: The cache object
+        CacheLogger: Logger instance
+    """
+    pre_stats = {
+        "hits": semantic_cache.report.hint_cache_count,
+        "llm_calls": semantic_cache.report.op_llm.count,
+    }
+    
+    start_time = time.time()
+
+    # Store the last LSH debug info before the request
+    last_lsh_debug = None
+    if hasattr(semantic_cache, 'lsh_cache') and hasattr(semantic_cache.lsh_cache, 'estimator'):
+        if hasattr(semantic_cache.lsh_cache.estimator, 'bucket_history') and semantic_cache.lsh_cache.estimator.bucket_history:
+            last_bucket = semantic_cache.lsh_cache.estimator.bucket_history[-1]
+            last_lsh_debug = {'last_bucket': last_bucket}
+
+    tracking_context = {}
+
+    answer = cached_llm(prompt=question, cache_obj=semantic_cache)
+    is_hit = semantic_cache.report.hint_cache_count > pre_stats["hits"]
+
+    temperature = None
+    similarity_score = None
+    lsh_debug_info = None
+    hamming_distance = None
+
+    if hasattr(semantic_cache, 'last_context') and semantic_cache.last_context:
+        #cluster_id = semantic_cache.last_context.get('cluster_id')
+        temperature = semantic_cache.last_context.get('temperature')
+        similarity_score = semantic_cache.last_context.get('similarity_score')
+        lsh_debug_info = semantic_cache.last_context.get('lsh_debug_info')
+
+    # Calculate hamming distance if we have both current and last bucket
+    if lsh_debug_info and last_lsh_debug and 'lsh_bucket' in lsh_debug_info and 'last_bucket' in last_lsh_debug:
+        current_bucket = lsh_debug_info['lsh_bucket']
+        last_bucket = last_lsh_debug['last_bucket']
+        hamming_distance = sum(c1 != c2 for c1, c2 in zip(current_bucket, last_bucket))
+
+    print(f"temperature: {temperature}")
+    #if lsh_debug_info:
+        #print(f"LSH Debug: {lsh_debug_info}")
+        #print("Got LSH debug info")
+
+    response_time = time.time() - start_time
+    report_metrics = convert_gptcache_report(semantic_cache)
+
+    #print(f"Direct LLM calls: {semantic_cache.report.op_llm_direct.count}")
+    
+    CacheLogger.log_request(
+        query=question,
+        response=answer,
+        response_time=response_time,
+        is_cache_hit=is_hit,
+        similarity_score=similarity_score,
+        used_cache=use_cache,
+        temperature=temperature,
+        #magnitude=magnitude,
+        #cluster_id=cluster_id,
+        hamming_distance=hamming_distance,
+        debug_info=lsh_debug_info,
+        report_metrics=report_metrics
+    )
+
+    print(f"Question: {question}")
+    print("Time consuming: {:.2f}s".format(response_time))
+    print(f"Answer: {answer}\n")
+    print("\033[94m" + "-----------------------------------------------------------" + "\033[0m\n")
+
+
+def get_info_level(config: Config):
+    info_level = config.sys['info_level']
+    INFO = False
+    DEBUG = False
+    if info_level == 0:
+        INFO = False
+        DEBUG = False
+    elif info_level == 1:
+        INFO = True
+        DEBUG = False
+    elif info_level == 2:
+        INFO = False
+        DEBUG = True
+    elif info_level == 3:
+        INFO = True
+        DEBUG = True
+
+    return INFO, DEBUG
+
+def info_print(msg, INFO):
+    if INFO:
+        print(f'[INFO] {msg}')
+ 
+def debug_print(msg, DEBUG):
+    if DEBUG:
+        print(f'[DEBUG] {msg}')

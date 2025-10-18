@@ -1,0 +1,4 @@
+name: "test_config"
+similarity_threshold: 0.8
+max_cache_size: 10
+dataset: "customerqa"

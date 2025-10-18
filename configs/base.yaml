@@ -1,0 +1,30 @@
+# System
+sys:
+  info_level: 3 # 0: no info, 1: INFO tags, 2: DEBUG tags, 3: INFO+DEBUG tags
+
+# Logging
+logging:
+  level: DEBUG
+  format: "[%(asctime)s] - %(name)s -%(levelname)s: %(message)s"
+
+# Vector Store
+vector_store:
+  dimension: 384
+  index_type: "IDMap,Flat"
+  metric_type: 1 # faiss.METRIC_L2
+
+# Cache
+cache:
+  CACHE_DIR: "./persistent_cache"
+
+# Experiment
+experiment:
+  name: "Experiment 1"
+  dataset: "customer_qa"
+  max_cache_size: 10
+  partial_questions: true
+  range_min: 0
+  range_max: 5
+  use_LSH: true
+  use_cache: true
+

@@ -7,19 +7,6 @@ from gptcache.manager.eviction.base import EvictionBase
 from components.customcache import DynamicCache
 
 class OldDynamicCacheO:
-    #def __init__(self, maxsize: int = 1000, **kwargs):
-    #    print(f"--- Initializing dynamic cache with maxsize {maxsize} ---")
-    #    self.maxsize = maxsize
-    #    self._data: Dict[Any, Any] = {}
-    #    self._access_times: Dict[Any, float] = {}
-    #    self._access_counts: Dict[Any, int] = {}
-    #    self._insertion_order = OrderedDict()
-
-    #    self.temperature = kwargs.get('temperature', 1.0)
-    #    self.decay_factor = kwargs.get('decay_factor', 0.95)
-
-    #    self._on_evict = kwargs.get('on_evict', None)
-
     def __init__(
             self, 
             policy: str = "DYN",
@@ -50,18 +37,6 @@ class OldDynamicCacheO:
             raise KeyError(key)
         self._update_access_stats(key)
         return self._data[key]
-    
-    #def __setitem__(self, key, value):
-    #    if key in self._data:
-    #        self._data[key] = value
-    #        self._update_access_stats(key)
-    #        return
-    #    if len(self._data) >= self.maxsize:
-    #        self._evict_items(1)
-    #    self._data[key] = value
-    #    self._access_times[key] = time.time()
-    #    self._access_counts[key] = 1
-    #    self._insertion_order[key] = True
 
     def __setitem__(self, key, value):
         print(f"\n[DEBUG] (dynamic_eviction.py > DynamicCache > __setitem__) __setitem__ called with key={key}, value={value}")
