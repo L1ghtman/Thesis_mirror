@@ -21,7 +21,8 @@ cache:
 experiment:
   name: "Experiment 1"
   dataset: "customer_qa"
-  max_cache_size: 10
+  max_cache_size: 3
+  cache_strategy: "dynamic_eviction" # "memory" or "dynamic_eviction"
   partial_questions: true
   range_min: 0
   range_max: 5

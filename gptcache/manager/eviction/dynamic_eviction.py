@@ -187,7 +187,9 @@ def popitem_wrapper(func, wrapper_func, clean_size):
             keys = [func(*args, **kwargs)[0] for _ in range(clean_size)]
         except KeyError:
             pass
-        wrapper_func(keys)
+        # TODO I think I forgot this line originally, or perhaps omitted for good reason
+        if wrapper_func is not None:
+            wrapper_func(keys)
 
     return wrapper
 
@@ -207,7 +209,7 @@ class DynamicEviction(EvictionBase):
         self._policy = policy.upper()
         if self._policy == "DYN":
             self._cache = DynamicCache(maxsize=maxsize, **kwargs)
-            print(f"[INFO] initialized DynamicCache with maxsize {maxsize}")
+            #print(f"[INFO] initialized DynamicCache with maxsize {maxsize}")
         else:
             raise ValueError(f"Unknown policy {policy}")
 

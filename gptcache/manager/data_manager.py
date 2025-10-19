@@ -241,7 +241,8 @@ class SSDataManager(DataManager):
         e: Optional[EvictionBase],
         max_size,
         clean_size,
-        policy="LRU"
+        policy="LRU",
+        name="memory",
     ):
         self.s = s
         self.v = v
@@ -249,11 +250,11 @@ class SSDataManager(DataManager):
         self.eviction_manager = EvictionManager(self.s, self.v)
         if e is None:
             e = EvictionBase(# original
-                            #name="memory",
-                            #maxsize=max_size,
+                            name=name,
+                             maxsize=max_size,
                              # for testing 
-                             name="dynamic_eviction",
-                             maxsize=5,
+                             #name="dynamic_eviction",
+                             #maxsize=5,
                              clean_size=clean_size,
                              policy=policy,
                              on_evict=self._clear)

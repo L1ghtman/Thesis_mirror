@@ -25,7 +25,7 @@ class EvictionBase:
         **kwargs
     ):
         if not clean_size:
-            clean_size = int(maxsize * 0.2)
+            clean_size = max(1, int(maxsize * 0.2))
         if name in "memory":
             from gptcache.manager.eviction.memory_cache import MemoryCacheEviction
             print("--- Using 'memory' ---")
@@ -45,8 +45,8 @@ class EvictionBase:
             return eviction_base
         if name == "dynamic_eviction":
             from gptcache.manager.eviction.dynamic_eviction import DynamicEviction
-            print("Dynamic Eviction debug message lol")
-            print(f"maxsize: {maxsize}")
+            print("[DEBUG] Dynamic Eviction selected                (gptcache > manager > eviction > manager.py > EvictionBase > get())")
+            print(f"[DEBUG] maxsize: {maxsize}                      (gptcache > manager > eviction > manager.py > EvictionBase > get())")
             eviction_base = DynamicEviction(
                 policy="dyn", maxsize=maxsize, clean_size=clean_size, on_evict=on_evict, **kwargs
             )

@@ -36,7 +36,7 @@ class MemoryCacheEviction(EvictionBase):
     def __init__(
             self,
             policy: str = "LRU",
-            maxsize: int = 3,
+            maxsize: int = 1000,
             clean_size: int = 0,
             on_evict: Callable[[List[Any]], None] = None,
             **kwargs,

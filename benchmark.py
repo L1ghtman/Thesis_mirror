@@ -2,23 +2,25 @@ import os
 import sys
 import logging
 import argparse
+import warnings
 import traceback
+import multiprocessing
 from config_manager import Config
 from gptcache.core import Cache
 from gptcache.processor.pre import get_prompt
 from gptcache.adapter.langchain_models import LangChainLLMs
 from gptcache.manager import CacheBase, VectorBase, get_data_manager
+from gptcache.manager.eviction import EvictionBase
 from gptcache.similarity_evaluation import SbertCrossencoderEvaluation
 from components.dataset_manager import DatasetManager
 from components.cache_utils import embedding_func, system_cleanup, lsh_temperature_func
 from components import custom_llm, new_cache_logger, cache_analyzer, lsh_based_estimator
 from components.helpers import info_print, debug_print, get_info_level, process_request
 
-def run_benchmark(config: Config):
-    print(f"Running experiment: {config.experiment['name']}")
-    print(f"Max Cache Size: {config.experiment['max_cache_size']}")
+os.environ['OBJC_DISABLE_INITIALIZE_FORK_SAFETY'] = 'YES'
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
-    print(config)
+warnings.filterwarnings("ignore", message="The method `BaseLLM.__call__` was deprecated")
 
 def main():
     try:
@@ -50,8 +52,18 @@ def main():
 
         cache_base = CacheBase("sqlite", sql_url=f"sqlite:///{os.path.join(CACHE_DIR, 'cache.db')}")
         vector_base = VectorBase("faiss", **vector_store_params)
+        #eviction_base = EvictionBase("dynamic_eviction")
 
-        data_manager = get_data_manager(cache_base, vector_base)
+        max_cache_size = config.experiment['max_cache_size']
+        cache_strategy = config.experiment['cache_strategy']
+        
+        #data_manager = get_data_manager(cache_base, vector_base)
+        #data_manager = get_data_manager(cache_base, vector_base, max_size=max_cache_size)
+        data_manager = get_data_manager(cache_base, vector_base, max_size=max_cache_size, name=cache_strategy)
+        #data_manager = get_data_manager(cache_base, vector_base, max_size=max_cache_size, eviction_base="memory")
+        #data_manager = get_data_manager(cache_base, vector_base, max_size=max_cache_size, clean_size=1)
+        #data_manager = get_data_manager(cache_base, vector_base, eviction_base=EvictionBase("memory", maxsize=max_cache_size))
+        #data_manager = get_data_manager(cache_base, vector_base, eviction_base=EvictionBase("dynamic_eviction", maxsize=5))
 
         dataset_manager = DatasetManager()
         dataset = config.experiment['dataset']
@@ -88,7 +100,6 @@ def main():
         )
 
         use_cache = config.experiment['use_cache']
-        debug_print(f"{use_cache}", DEBUG)
 
         try:
             for i, question in enumerate(selected_questions, start=1):
@@ -100,9 +111,9 @@ def main():
                     CacheLogger,
                     use_cache=use_cache,
                 )
-                CacheLogger.close()
-                report_path = cache_analyzer.generate_latest_run_report(log_dir="cache_logs")
-                print(f'Performance report saved to: {report_path}')
+            CacheLogger.close()
+            report_path = cache_analyzer.generate_latest_run_report(log_dir="cache_logs")
+            print(f'Performance report saved to: {report_path}')
         finally:
             system_cleanup(semantic_cache, vector_base, data_manager)
 
@@ -111,9 +122,6 @@ def main():
         logging.error("Full traceback:")
         logging.error(traceback.format_exc())
 
-    print("[INFO] Running benchmark ...")
-    run_benchmark(config)
-    print("[INFO] Finished running benchmark ...")
-
 if __name__=="__main__":
+    multiprocessing.set_start_method('spawn')
     main()

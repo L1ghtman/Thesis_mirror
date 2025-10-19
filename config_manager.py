@@ -28,6 +28,7 @@ class ExperimentConfig:
     name: str
     dataset: str
     max_cache_size: int
+    cache_strategy: str
     partial_questions: bool
     use_LSH: bool
     use_cache: bool

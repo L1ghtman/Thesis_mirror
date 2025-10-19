@@ -137,12 +137,13 @@ def get_data_manager(
         object_base: Union[ObjectBase, str] = None,
         eviction_base: Union[EvictionBase, str] = None,
         #original
-        #max_size: int = 1000,
+        max_size: int = 1000,
         # for testing
-        max_size: int = 2,
+        #max_size: int = 2,
         clean_size=None,
         eviction: str = "LRU",
         data_path: str = "data_map.txt",
+        name: str = "memory",
         get_data_container: Callable = None,
 ):
     """Generate `SSDataManager` (with `cache_base`, `vector_base`, `max_size`, `clean_size` and `eviction` params),
@@ -206,4 +207,4 @@ def get_data_manager(
     if isinstance(eviction_base, str) and eviction_base != "memory":
         eviction_base = EvictionBase(name=eviction_base)
     assert cache_base and vector_base
-    return SSDataManager(cache_base, vector_base, object_base, eviction_base, max_size, clean_size, eviction)
+    return SSDataManager(cache_base, vector_base, object_base, eviction_base, max_size, clean_size, eviction, name)
