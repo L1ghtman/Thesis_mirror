@@ -5,7 +5,7 @@ import argparse
 import warnings
 import traceback
 import multiprocessing
-from config_manager import Config
+from config_manager import load_config
 from gptcache.core import Cache
 from gptcache.processor.pre import get_prompt
 from gptcache.adapter.langchain_models import LangChainLLMs
@@ -28,7 +28,8 @@ def main():
         parser.add_argument('--config', type=str, required=True, help='Path to the config YAML file')
         args = parser.parse_args()
 
-        config = Config.from_yaml(args.config)
+        #config = Config.from_yaml(args.config)
+        config = load_config(args.config)
 
         INFO, DEBUG = get_info_level(config)
 
@@ -52,18 +53,11 @@ def main():
 
         cache_base = CacheBase("sqlite", sql_url=f"sqlite:///{os.path.join(CACHE_DIR, 'cache.db')}")
         vector_base = VectorBase("faiss", **vector_store_params)
-        #eviction_base = EvictionBase("dynamic_eviction")
 
         max_cache_size = config.experiment['max_cache_size']
         cache_strategy = config.experiment['cache_strategy']
         
-        #data_manager = get_data_manager(cache_base, vector_base)
-        #data_manager = get_data_manager(cache_base, vector_base, max_size=max_cache_size)
         data_manager = get_data_manager(cache_base, vector_base, max_size=max_cache_size, name=cache_strategy)
-        #data_manager = get_data_manager(cache_base, vector_base, max_size=max_cache_size, eviction_base="memory")
-        #data_manager = get_data_manager(cache_base, vector_base, max_size=max_cache_size, clean_size=1)
-        #data_manager = get_data_manager(cache_base, vector_base, eviction_base=EvictionBase("memory", maxsize=max_cache_size))
-        #data_manager = get_data_manager(cache_base, vector_base, eviction_base=EvictionBase("dynamic_eviction", maxsize=5))
 
         dataset_manager = DatasetManager()
         dataset = config.experiment['dataset']

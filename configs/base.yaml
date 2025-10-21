@@ -20,12 +20,22 @@ cache:
 # Experiment
 experiment:
   name: "Experiment 1"
+
+  # Dataset configuration
   dataset: "customer_qa"
-  max_cache_size: 3
-  cache_strategy: "dynamic_eviction" # "memory" or "dynamic_eviction"
   partial_questions: true
   range_min: 0
-  range_max: 5
-  use_LSH: true
-  use_cache: true
+  range_max: 1
 
+  # Cache configuration
+  use_cache: true
+  max_cache_size: 200
+  cache_strategy: "dynamic_eviction" # "memory" or "dynamic_eviction"
+
+  # LSH configuration
+  use_LSH: true
+  bucket_density_factor: 0.7
+  num_hyperplanes: 8
+  window_size: 1000
+  sensitivity: 2.0
+  decay_rate: 5.0
