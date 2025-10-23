@@ -46,9 +46,9 @@ class LSHEstimator:
         INFO, DEBUG = get_info_level(self.config)
 
         info_print('--- LSHEstimator configuration ---', INFO)
-        info_print(f'bucket_density_factor:     {self.config.experiment['bucket_density_factor']}', INFO)
-        info_print(f'sensitivity:               {self.config.experiment['sensitivity']}', INFO)
-        info_print(f'decay_rate:                {self.config.experiment['decay_rate']}', INFO)
+        info_print(f"bucket_density_factor:     {self.config.experiment['bucket_density_factor']}", INFO)
+        info_print(f"sensitivity:               {self.config.experiment['sensitivity']}", INFO)
+        info_print(f"decay_rate:                {self.config.experiment['decay_rate']}", INFO)
         info_print('----------------------------------', INFO)
         
     def get_lsh_bucket(self, embedding: np.ndarray) -> Tuple[str, float]:
@@ -288,10 +288,10 @@ class LSHCache:
         INFO, DEBUG = get_info_level(self.config)
 
         info_print('--- LSHCache configuration ---', INFO)
-        info_print(f'use_LSH:                   {self.config.experiment['use_LSH']}', INFO)
-        info_print(f'embedding dimension:       {self.config.vector_store['dimension']}', INFO)
-        info_print(f'num_hyperplanes:           {self.config.experiment['num_hyperplanes']}', INFO)
-        info_print(f'window size:               {self.config.experiment['window_size']}', INFO)
+        info_print(f"use_LSH:                   {self.config.experiment['use_LSH']}", INFO)
+        info_print(f"embedding dimension:       {self.config.vector_store['dimension']}", INFO)
+        info_print(f"num_hyperplanes:           {self.config.experiment['num_hyperplanes']}", INFO)
+        info_print(f"window size:               {self.config.experiment['window_size']}", INFO)
         info_print('----------------------------------', INFO)
     
     def estimate_temperature(self, embedding: np.ndarray) -> Tuple[float, dict]:
