@@ -165,6 +165,38 @@ class DatasetManager:
             print(f"Error loading Yahoo Answers dataset: {e}")
             return None
     
+    def load_quora_question_pairs(self, split: str = "train", max_samples: Optional[int] = 1000) -> str:
+        """
+        Load the Quora question-pairs dataset
+        
+        Args:
+            max_samples: Maximum number of samples to load (None for all)
+        Returns:
+            Name of the loaded dataset"""
+        
+        dataset_name = f"quora_question_pairs_{split}"
+        
+        try:
+            ds = load_dataset("AlekseyKorshuk/quora-question-pairs", split=split, cache_dir=self.cache_dir)
+            print(type(ds))
+            print(ds)
+
+            if max_samples and max_samples < len(ds):
+                ds = ds.select(range(max_samples))
+            
+            self.datasets[dataset_name] = {
+                "data": ds,
+                "type": "qp",
+                "description": f"Quora question-pairs {split} dataset (max {max_samples} samples)"
+            }
+
+            print(f"Loaded {len(ds)} samples from Quora question-pairs {split} dataset")
+            return dataset_name
+
+        except Exception as e:
+            print(f"Error loading Quora question-pairs: {e}")
+            return None
+    
     def load_custom(self, dataset_name: str, questions: List[str], answers: Optional[List[str]] = None) -> str:
         """
         Load a custom dataset from provided questions and answers.
@@ -303,6 +335,14 @@ class DatasetManager:
             # Find the question field
             question_field = self._guess_question_field(dataset)
             questions = [item[question_field] for item in dataset]
+        if dataset_info["type"] == "qp":
+            questions = []
+            for item in dataset:
+                q1 = item['question1']
+                q2 = item['question2']
+                questions.append(q1)
+                questions.append(q2)
+
         else:
             # Fallback: get the first column
             first_col = list(dataset.features.keys())[0]
@@ -388,7 +428,7 @@ class DatasetManager:
         """
         # Common field names for questions
         question_fields = ['question', 'query', 'context', 'text', 'content']
-        
+
         # Check if any of these fields exist
         for field in question_fields:
             if field in dataset.features:
