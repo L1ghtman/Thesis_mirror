@@ -60,21 +60,28 @@ def main():
         data_manager = get_data_manager(cache_base, vector_base, max_size=max_cache_size, name=cache_strategy)
 
         dataset_manager = DatasetManager()
-        dataset = config.experiment['dataset']
+        dataset_name = config.experiment['dataset_name']
+        load_from_file = config.experiment['load_from_file']
+
+        if load_from_file:
+            dataset_name = dataset_manager.load(
+                dataset="file",
+                file_path=f"dataset_cache/{dataset_name}.json",
+                dataset_name=dataset_name
+            )
+
 #        dataset_manager.load_from_file(
 #            file_path=f"dataset_cache/{dataset}.json",
 #            dataset_name = dataset
 #        )
 
-        debug_print(dataset, DEBUG)
-        dataset_manager.load(
-            dataset="file",
-            file_path=f"dataset_cache/{dataset}.json",
-            dataset_name=dataset
+        dataset_name = dataset_manager.load(
+            dataset=dataset_name,
         )
 
-        dataset_manager.set_active_dataset(dataset)
-        questions = dataset_manager.get_questions(dataset_name=dataset)
+        debug_print(dataset_name, DEBUG)
+        dataset_manager.set_active_dataset(dataset_name)
+        questions = dataset_manager.get_questions(dataset_name=dataset_name)
 
         selected_questions = []
         if config.experiment['partial_questions']:

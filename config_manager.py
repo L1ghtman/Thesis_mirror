@@ -27,7 +27,8 @@ class CacheConfig:
 @dataclass
 class ExperimentConfig:
     name: str
-    dataset: str
+    dataset_name: str
+    load_from_file: bool
     partial_questions: bool
     range_min: int
     range_max: int
