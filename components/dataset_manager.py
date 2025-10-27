@@ -335,7 +335,10 @@ class DatasetManager:
             # Find the question field
             question_field = self._guess_question_field(dataset)
             questions = [item[question_field] for item in dataset]
-        if dataset_info["type"] == "qp":
+            print(f"[DEBUG] questions type: {type(questions[0])}")
+            if type(questions[0]) == dict:
+                questions = [q['question'] for q in questions]
+        elif dataset_info["type"] == "qp":
             questions = []
             for item in dataset:
                 q1 = item['question1']
@@ -545,8 +548,39 @@ class DatasetManager:
         # Sample 'count' questions
         return questions[:count]
 
+    def load(self, dataset: str, **kwargs) -> Optional[str]:
+        dataset = dataset.lower().replace('-', '_').replace(' ', '_')
 
-# Example usage functions
+        loader_map = {
+            'msmarco': self.load_msmarco,
+            'ms_marco': self.load_msmarco,
+            'squad': self.load_squad,
+            'natural_questions': self.load_natural_questions,
+            'nq': self.load_natural_questions,
+            'yahoo_answers': self.load_yahoo_answers,
+            'yahoo': self.load_yahoo_answers,
+            'quora_question_pairs': self.load_quora_question_pairs,
+            'quora': self.load_quora_question_pairs,
+            'custom': self.load_custom,
+            'from_file': self.load_from_file,
+            'file': self.load_from_file,
+        }
+
+        if dataset not in loader_map:
+            print(f"Error: Unknown dataset name '{dataset}'")
+            print(f"Supported names: {', '.join(sorted(set(loader_map.keys())))}")
+            return None
+
+        loader_func = loader_map[dataset]
+
+        try:
+            return loader_func(**kwargs)
+        except TypeError as e:
+            print(f"Error: Invalid parameters for dataset name '{dataset}': {e}")
+            return None
+        except Exception as e:
+            print(f"Error loading dataset '{dataset}': {e}")
+            return None
 
 def create_default_manager():
     """Create a dataset manager with some default datasets."""

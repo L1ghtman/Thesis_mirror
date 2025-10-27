@@ -61,10 +61,18 @@ def main():
 
         dataset_manager = DatasetManager()
         dataset = config.experiment['dataset']
-        dataset_manager.load_from_file(
+#        dataset_manager.load_from_file(
+#            file_path=f"dataset_cache/{dataset}.json",
+#            dataset_name = dataset
+#        )
+
+        debug_print(dataset, DEBUG)
+        dataset_manager.load(
+            dataset="file",
             file_path=f"dataset_cache/{dataset}.json",
-            dataset_name = dataset
+            dataset_name=dataset
         )
+
         dataset_manager.set_active_dataset(dataset)
         questions = dataset_manager.get_questions(dataset_name=dataset)
 
@@ -73,10 +81,10 @@ def main():
             min = config.experiment['range_min']
             max = config.experiment['range_max']
             for q in questions[min:max]:
-                selected_questions.append(q['question'])
+                selected_questions.append(q)
         else:
             for q in questions:
-                selected_questions.append(q['question'])
+                selected_questions.append(q)
 
         CacheLogger = new_cache_logger.CacheLogger()
         LSHCache = lsh_based_estimator.LSHCache()
