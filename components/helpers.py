@@ -12,8 +12,10 @@ EOT = "<|eot_id|>"
 # These wrap around one of the three possible roles: system, user, assistant
 SH = "<|start_header_id|>"
 EH = "<|end_header_id|>"
-SP = "You are a helpful AI assistant. You are currently being tested. Please only respond with 'This is a test'."
-
+# System prompt for testing
+# SP = "You are a helpful AI assistant. You are currently being tested. Please only respond with 'This is a test'."
+# System prompt for benchmarking
+SP = "You are a helpful AI assistant. Provide clear, accurate, and concise responses to user queries. Keep your answers factual and well-structured. Aim for completeness while being efficient with words."
 # Take a prompt and format it into Llama-3 prompt token format according to https://llama.meta.com/docs/model-cards-and-prompt-formats/meta-llama-3/
 def prompt_format(prompt: str, first_call: bool) -> Tuple[str, bool]:
     """Take a user input and format it into llama3 prompt token format."""

@@ -19,18 +19,18 @@ cache:
 
 # Experiment
 experiment:
-  name: "Experiment 1"
+  name: "Quora small batch size"
 
   # Dataset configuration
   dataset_name: "quora"
   load_from_file: false
   partial_questions: true
   range_min: 0
-  range_max: 4
+  range_max: 1000
 
   # Cache configuration
   use_cache: true
-  max_cache_size: 200
+  max_cache_size: 2000
   cache_strategy: "dynamic_eviction" # "memory" or "dynamic_eviction"
 
   # LSH configuration
