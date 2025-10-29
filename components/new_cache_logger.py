@@ -13,6 +13,7 @@ class CacheLogger:
         self.current_run_id = self._get_next_run_id()
         self.log_file = self._create_log_file()
         self.metrics = {
+            "start_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "pre_process_time": 0, 
             "pre_process_count": 0,
             "embedding_time": 0, 
@@ -121,6 +122,7 @@ class CacheLogger:
                 self.metrics["cache_response_times"].append(response_time)
                 event_type = "CACHE_HIT"
                 # TODO: add positive/negative hit tracking
+                # Comment: This is not done with a few lines, would take online evaluation of request (complex task)
             else:
                 self.metrics["llm_response_times"].append(response_time)
                 event_type = "CACHE_MISS"

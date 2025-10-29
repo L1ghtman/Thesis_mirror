@@ -178,8 +178,6 @@ class DatasetManager:
         
         try:
             ds = load_dataset("AlekseyKorshuk/quora-question-pairs", split=split, cache_dir=self.cache_dir)
-            print(type(ds))
-            print(ds)
 
             if max_samples and max_samples < len(ds):
                 ds = ds.select(range(max_samples))

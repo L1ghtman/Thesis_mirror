@@ -19,6 +19,10 @@ from components.helpers import info_print, debug_print, get_info_level, process_
 
 os.environ['OBJC_DISABLE_INITIALIZE_FORK_SAFETY'] = 'YES'
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
+os.environ['OMP_NUM_THREADS'] = '1'
+
+import faiss
+faiss.omp_set_num_threads(1)
 
 warnings.filterwarnings("ignore", message="The method `BaseLLM.__call__` was deprecated")
 

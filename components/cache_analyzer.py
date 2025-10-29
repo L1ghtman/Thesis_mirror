@@ -66,7 +66,7 @@ class CachePerformanceAnalyzer:
                 print(f"Error decoding JSON from {log_file}")
                 # Return minimal valid structure
                 return {
-                    "start_time": datetime.now().isoformat(),
+                    "start_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                     "total_requests": 0,
                     "requests": [],
                     "cache_hits": 0,
@@ -104,7 +104,7 @@ class CachePerformanceAnalyzer:
         for field in required_fields:
             if field not in run_data:
                 if field == "start_time":
-                    run_data[field] = datetime.now().isoformat()
+                    run_data[field] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 else:
                     run_data[field] = 0
         
@@ -793,6 +793,8 @@ class CachePerformanceAnalyzer:
             time_saved = summary["time_saved"]
             avg_cache_time = summary["avg_cache_time"]
             avg_llm_time = summary["avg_llm_time"]
+            total_time = summary["total_time"]
+            start_time = run_data["start_time"]
             #avg_cluster_time = summary["avg_cluster_time"]
             avg_temperature_time = summary["avg_temperature_time"]
 
@@ -1094,6 +1096,8 @@ class CachePerformanceAnalyzer:
                     <div class="container">
                         <h1><i class="fas fa-chart-line"></i> GPTCache Performance Report</h1>
                         <p>Run #{run_id} | Generated on {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}</p>
+                        <p>Start time:      {start_time}</p>
+                        <p>Total duration:  {total_time}</p>
                     </div>
                 </div>
 

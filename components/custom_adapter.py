@@ -2,6 +2,8 @@ import time
 
 import numpy as np
 
+from config_manager import get_config
+from components.helpers import get_info_level, info_print, debug_print
 from gptcache import cache
 from gptcache.processor.post import temperature_softmax
 from gptcache.utils.error import NotInitError
@@ -39,6 +41,9 @@ def custom_adapt(llm_handler, cache_data_convert, update_cache_callback, *args, 
     embedding_data = None
     # you want to retry to send the request to chatgpt when the cache is negative
 
+    config = get_config()
+    INFO, DEBUG = get_info_level(config)
+
     print("\033[91mUsing custom adapter.\033[0m")
 
 
@@ -73,7 +78,7 @@ def custom_adapt(llm_handler, cache_data_convert, update_cache_callback, *args, 
         )(pre_embedding_data, extra_param=context.get("embedding_func", None))
     
     cache_size = chat_cache.data_manager.v.count()
-    print(f"Cache size: {cache_size}")
+    info_print(f"Cache size: {cache_size}", INFO)
 
     # Set base temperature inverse to overall cache size
     #if cache_size > 0:
@@ -92,7 +97,7 @@ def custom_adapt(llm_handler, cache_data_convert, update_cache_callback, *args, 
                 report_func=chat_cache.report.clustering,
             )(clusterer, embedding_data, cache_size, temperature)
 
-            print(f"Temperature result: {temp_result}")
+            info_print(f"Temperature result: {temp_result}", INFO)
             
             # If temperature_func returns a tuple, it might contain (temperature, cluster_id)
             if isinstance(temp_result, tuple) and len(temp_result) >= 2:
@@ -126,7 +131,7 @@ def custom_adapt(llm_handler, cache_data_convert, update_cache_callback, *args, 
             else:
                 temperature = temp_result
  
-            print(f"Temperature result: {temp_result}")
+            info_print(f"Temperature result: {temp_result}", INFO)
             #print("Here !!!")
             #print(f"custom adapter Debug info: {lsh_debug_info}\n")
 
@@ -167,10 +172,10 @@ def custom_adapt(llm_handler, cache_data_convert, update_cache_callback, *args, 
     else:  # temperature <= 0
         cache_skip = kwargs.pop("cache_skip", False)
 
+    debug_print(f"Calculated cache skip: {cache_skip}", DEBUG)
     # For testing:
-    cache_skip = True
-
-    print(f"Cache skip: {cache_skip}")
+    cache_skip = False
+    debug_print(f"Hard coded cache skip: {cache_skip}", DEBUG)
 
     if cache_enable and not cache_skip:
         search_data_list = time_cal(
@@ -297,7 +302,7 @@ def custom_adapt(llm_handler, cache_data_convert, update_cache_callback, *args, 
 
             if cache_whole_data:
                 similarity_score = cache_whole_data[0]
-                print(f"Cache hit with similarity score: {similarity_score}")
+                info_print(f"Cache hit with similarity score: {similarity_score}", INFO)
                 context["similarity_score"] = similarity_score
                 chat_cache.last_context["similarity_score"] = similarity_score
 
