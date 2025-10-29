@@ -37,26 +37,26 @@ def convert_gptcache_report(cache_obj, log_dir="cache_logs"):
     report = cache_obj.report
 
     full_metrics = {
-        "pre_process_time": report.op_pre.total_time,
-        "pre_process_count": report.op_pre.count,
-        "embedding_time": report.op_embedding.total_time,
-        "embedding_count": report.op_embedding.count,
-        "clustering_time": report.op_clustering.total_time,
-        "clustering_count": report.op_clustering.count,
-        "temperature_time": report.op_temperature.total_time,
-        "temperature_count": report.op_temperature.count,
-        "search_time": report.op_search.total_time,
-        "search_count": report.op_search.count,
-        "data_time": report.op_data.total_time,
-        "data_count": report.op_data.count,
-        "eval_time": report.op_evaluation.total_time,
-        "eval_count": report.op_evaluation.count,
-        "post_process_time": report.op_post.total_time,
-        "post_process_count": report.op_post.count,
-        "llm_time": report.op_llm.total_time,
-        "llm_count": report.op_llm.count,
-        "llm_direct_time": report.op_llm_direct.total_time,
-        "llm_direct_count": report.op_llm_direct.count,
+        "pre_process_time":         report.op_pre.total_time,
+        "pre_process_count":        report.op_pre.count,
+        "embedding_time":           report.op_embedding.total_time,
+        "embedding_count":          report.op_embedding.count,
+        "clustering_time":          report.op_clustering.total_time,
+        "clustering_count":         report.op_clustering.count,
+        "temperature_time":         report.op_temperature.total_time,
+        "temperature_count":        report.op_temperature.count,
+        "search_time":              report.op_search.total_time,
+        "search_count":             report.op_search.count,
+        "data_time":                report.op_data.total_time,
+        "data_count":               report.op_data.count,
+        "eval_time":                report.op_evaluation.total_time,
+        "eval_count":               report.op_evaluation.count,
+        "post_process_time":        report.op_post.total_time,
+        "post_process_count":       report.op_post.count,
+        "llm_time":                 report.op_llm.total_time,
+        "llm_count":                report.op_llm.count,
+        "llm_direct_time":          report.op_llm_direct.total_time,
+        "llm_direct_count":         report.op_llm_direct.count,
         "save_time": report.op_save.total_time,
         "save_count": report.op_save.count,
         "average_pre_time": report.op_pre.average(),
@@ -86,7 +86,7 @@ def track_request(question, response, start_time, is_cache_hit, similarity_score
     }
     return request_data
 
-def process_request(question, cached_llm, semantic_cache, CacheLogger, use_cache):
+def process_request(question, cached_llm, semantic_cache, CacheLogger):
     """
     Send a request to the cache and log the response.
     
@@ -107,54 +107,56 @@ def process_request(question, cached_llm, semantic_cache, CacheLogger, use_cache
     last_lsh_debug = None
     if hasattr(semantic_cache, 'lsh_cache') and hasattr(semantic_cache.lsh_cache, 'estimator'):
         if hasattr(semantic_cache.lsh_cache.estimator, 'bucket_history') and semantic_cache.lsh_cache.estimator.bucket_history:
-            last_bucket = semantic_cache.lsh_cache.estimator.bucket_history[-1]
-            last_lsh_debug = {'last_bucket': last_bucket}
+            last_bucket     = semantic_cache.lsh_cache.estimator.bucket_history[-1]
+            last_lsh_debug  = {'last_bucket': last_bucket}
 
     tracking_context = {}
 
     answer = cached_llm(prompt=question, cache_obj=semantic_cache)
     is_hit = semantic_cache.report.hint_cache_count > pre_stats["hits"]
 
-    temperature = None
-    similarity_score = None
-    lsh_debug_info = None
-    hamming_distance = None
+    temperature         = None
+    similarity_score    = None
+    lsh_debug_info      = None
+    hamming_distance    = None
+    used_cache          = None
 
     if hasattr(semantic_cache, 'last_context') and semantic_cache.last_context:
         #cluster_id = semantic_cache.last_context.get('cluster_id')
-        temperature = semantic_cache.last_context.get('temperature')
-        similarity_score = semantic_cache.last_context.get('similarity_score')
-        lsh_debug_info = semantic_cache.last_context.get('lsh_debug_info')
+        temperature         = semantic_cache.last_context.get('temperature')
+        similarity_score    = semantic_cache.last_context.get('similarity_score')
+        lsh_debug_info      = semantic_cache.last_context.get('lsh_debug_info')
+        used_cache          = semantic_cache.last_context.get('used_cache')
 
     # Calculate hamming distance if we have both current and last bucket
     if lsh_debug_info and last_lsh_debug and 'lsh_bucket' in lsh_debug_info and 'last_bucket' in last_lsh_debug:
-        current_bucket = lsh_debug_info['lsh_bucket']
-        last_bucket = last_lsh_debug['last_bucket']
-        hamming_distance = sum(c1 != c2 for c1, c2 in zip(current_bucket, last_bucket))
+        current_bucket      = lsh_debug_info['lsh_bucket']
+        last_bucket         = last_lsh_debug['last_bucket']
+        hamming_distance    = sum(c1 != c2 for c1, c2 in zip(current_bucket, last_bucket))
 
     print(f"temperature: {temperature}")
     #if lsh_debug_info:
         #print(f"LSH Debug: {lsh_debug_info}")
         #print("Got LSH debug info")
 
-    response_time = time.time() - start_time
-    report_metrics = convert_gptcache_report(semantic_cache)
+    response_time   = time.time() - start_time
+    report_metrics  = convert_gptcache_report(semantic_cache)
 
     #print(f"Direct LLM calls: {semantic_cache.report.op_llm_direct.count}")
     
     CacheLogger.log_request(
-        query=question,
-        response=answer,
-        response_time=response_time,
-        is_cache_hit=is_hit,
-        similarity_score=similarity_score,
-        used_cache=use_cache,
-        temperature=temperature,
+        query               =question,
+        response            =answer,
+        response_time       =response_time,
+        is_cache_hit        =is_hit,
+        similarity_score    =similarity_score,
+        used_cache          =used_cache,
+        temperature         =temperature,
         #magnitude=magnitude,
         #cluster_id=cluster_id,
-        hamming_distance=hamming_distance,
-        debug_info=lsh_debug_info,
-        report_metrics=report_metrics
+        hamming_distance    =hamming_distance,
+        debug_info          =lsh_debug_info,
+        report_metrics      =report_metrics
     )
 
     print(f"Question: {question}")

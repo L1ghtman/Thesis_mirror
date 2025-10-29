@@ -112,7 +112,7 @@ def main():
             temperature_func=lsh_temperature_func,
         )
 
-        use_cache = config.experiment['use_cache']
+        #use_cache = config.experiment['use_cache']
 
         try:
             for i, question in enumerate(selected_questions, start=1):
@@ -122,7 +122,7 @@ def main():
                     cached_llm,
                     semantic_cache,
                     CacheLogger,
-                    use_cache=use_cache,
+                    #use_cache=use_cache,
                 )
             CacheLogger.close()
             report_path = cache_analyzer.generate_latest_run_report(log_dir="cache_logs")

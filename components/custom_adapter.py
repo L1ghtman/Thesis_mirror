@@ -172,10 +172,14 @@ def custom_adapt(llm_handler, cache_data_convert, update_cache_callback, *args, 
     else:  # temperature <= 0
         cache_skip = kwargs.pop("cache_skip", False)
 
+    context["used_cache"] = not cache_skip
+    chat_cache.last_context["used_cache"] = not cache_skip
+
     debug_print(f"Calculated cache skip: {cache_skip}", DEBUG)
     # For testing:
-    cache_skip = False
-    debug_print(f"Hard coded cache skip: {cache_skip}", DEBUG)
+    if not config.experiment["use_cache"]:
+        cache_skip = True
+        debug_print(f"Hard coded cache skip: {cache_skip}", DEBUG)
 
     if cache_enable and not cache_skip:
         search_data_list = time_cal(
