@@ -258,7 +258,7 @@ class SSDataManager(DataManager):
                              clean_size=clean_size,
                              policy=policy,
                              on_evict=self._clear)
-            print("SSDataManager initialized with EvictionManager on_evict")
+            #print("SSDataManager initialized with EvictionManager on_evict")
         
     #    if e is not None and e.on_evict is None:
     #        e.on_evict = self._clear

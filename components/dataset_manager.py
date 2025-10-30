@@ -6,6 +6,8 @@ import json
 import random
 from typing import Dict, List, Tuple, Optional, Union, Any, Callable
 from datasets import load_dataset, Dataset
+from config_manager import get_config
+from components.helpers import get_info_level, info_print, debug_print
 
 class DatasetManager:
     """Manager for loading and processing datasets for LLM cache benchmarking."""
@@ -21,6 +23,9 @@ class DatasetManager:
         self.datasets = {}
         self.active_dataset = None
         self.active_dataset_name = None
+
+        self.config = get_config()
+        self.INFO, self.DEBUG = get_info_level(self.config)
         
         # Create cache directory if it doesn't exist
         os.makedirs(cache_dir, exist_ok=True)
@@ -53,7 +58,7 @@ class DatasetManager:
                 "description": f"MS MARCO {split} dataset (max {max_samples} samples)"
             }
             
-            print(f"Loaded {len(ds)} samples from MS MARCO {split} dataset")
+            info_print(f"Loaded {len(ds)} samples from MS MARCO {split} dataset", self.INFO)
             return dataset_name
         
         except Exception as e:
@@ -188,7 +193,7 @@ class DatasetManager:
                 "description": f"Quora question-pairs {split} dataset (max {max_samples} samples)"
             }
 
-            print(f"Loaded {len(ds)} samples from Quora question-pairs {split} dataset")
+            info_print(f"Loaded {len(ds)} samples from Quora question-pairs {split} dataset", self.INFO)
             return dataset_name
 
         except Exception as e:
@@ -300,7 +305,7 @@ class DatasetManager:
         
         self.active_dataset = self.datasets[dataset_name]["data"]
         self.active_dataset_name = dataset_name
-        print(f"Active dataset set to '{dataset_name}'")
+        info_print(f"Active dataset set to '{dataset_name}'", self.INFO)
         return True
     
     def get_questions(self, dataset_name: Optional[str] = None, count: Optional[int] = None, 
