@@ -134,7 +134,7 @@ def process_request(question, cached_llm, semantic_cache, CacheLogger):
         last_bucket         = last_lsh_debug['last_bucket']
         hamming_distance    = sum(c1 != c2 for c1, c2 in zip(current_bucket, last_bucket))
 
-    print(f"temperature: {temperature}")
+    #print(f"temperature: {temperature}")
     #if lsh_debug_info:
         #print(f"LSH Debug: {lsh_debug_info}")
         #print("Got LSH debug info")
@@ -186,11 +186,11 @@ def get_info_level(config: Config):
 
 def info_print(msg, INFO):
     if INFO:
-        print(f'[INFO] {msg}')
+        print(f'\033[96m[INFO] {msg}\033[0m')
  
 def debug_print(msg, DEBUG):
     if DEBUG:
-        print(f'[DEBUG] {msg}')
+        print(f'\033[90m[DEBUG] {msg}\033[0m')
 
 def format_time(seconds: float) -> str:
     """Convert seconds to hh:mm:ss.000 format."""

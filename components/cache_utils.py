@@ -1,12 +1,14 @@
+import sys
 import time
 import logging
-from components import cache_analyzer
-import sys
 import traceback
+import numpy as np
 from gptcache.core import Cache
 from gptcache.embedding import SBERT
-import numpy as np
 from transformers import AutoTokenizer, AutoModel
+from components import cache_analyzer
+from config_manager import get_config
+from components.helpers import get_info_level, debug_print, info_print
 
 def embedding_func(prompt, extra_param=None):
     encoder = SBERT('all-MiniLM-L6-v2')
@@ -24,6 +26,10 @@ def temperature_func(clusterer, embedding_data, cache_size, temperature):
     Returns a tuple of (temperature, cluster_id) if clustering successful,
     otherwise just returns the temperature.
     """
+    # Get config data
+    config = get_config
+    INFO, DEBUG = get_info_level(config)
+
     # Create a unique ID for this vector using a hash of the embedding
     vector_id = hash(tuple(embedding_data))
     
@@ -95,8 +101,8 @@ def temperature_func(clusterer, embedding_data, cache_size, temperature):
     adjusted_temperature = original_temperature * (0.4*cache_factor + 0.6*cluster_adjustment)
     temperature = max(0.0, min(2.0, adjusted_temperature))
     
-    print(f"Temp adjustment: {original_temperature:.2f} → {temperature:.2f} " +
-          f"(cluster: {cluster_adjustment:.2f}, cache: {cache_factor:.2f})")
+    info_print(f"Temp adjustment: {original_temperature:.2f} → {temperature:.2f} " +
+          f"(cluster: {cluster_adjustment:.2f}, cache: {cache_factor:.2f})", INFO)
     print(". . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .")
     
     # Return both temperature and cluster_id if we have it

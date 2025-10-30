@@ -44,7 +44,7 @@ def custom_adapt(llm_handler, cache_data_convert, update_cache_callback, *args, 
     config = get_config()
     INFO, DEBUG = get_info_level(config)
 
-    print("\033[91mUsing custom adapter.\033[0m")
+    info_print("\033[91mUsing custom adapter.\033[0m", INFO)
 
 
     cache_factor = kwargs.pop("cache_factor", 1.0)

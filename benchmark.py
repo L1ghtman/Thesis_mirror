@@ -5,7 +5,13 @@ import argparse
 import warnings
 import traceback
 import multiprocessing
-from config_manager import load_config
+from config_manager import load_config, get_config
+# Load config before anything else can call get_config()
+parser = argparse.ArgumentParser(description="Run GPTCache benchmark experiments")
+parser.add_argument('--config', type=str, required=True, help='Path to the config YAML file')
+args = parser.parse_args()
+config = load_config(args.config)
+
 from gptcache.core import Cache
 from gptcache.processor.pre import get_prompt
 from gptcache.adapter.langchain_models import LangChainLLMs
@@ -28,13 +34,7 @@ warnings.filterwarnings("ignore", message="The method `BaseLLM.__call__` was dep
 
 def main():
     try:
-        parser = argparse.ArgumentParser(description="Run GPTCache benchmark experiments")
-        parser.add_argument('--config', type=str, required=True, help='Path to the config YAML file')
-        args = parser.parse_args()
-
-        #config = Config.from_yaml(args.config)
-        config = load_config(args.config)
-
+        config = get_config()
         INFO, DEBUG = get_info_level(config)
 
         print(f'[TEST] INFO={INFO}, DEBUG={DEBUG}')
