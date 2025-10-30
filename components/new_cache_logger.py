@@ -2,9 +2,10 @@ import os
 import json
 import time
 import logging
+import numpy as np
 from datetime import datetime
 from typing import Dict, Any, Optional, List, Union
-import numpy as np
+from components.helpers import format_time
 
 class CacheLogger:
 
@@ -203,7 +204,7 @@ class CacheLogger:
             "avg_temperature_time": avg_temperature_time,
             "avg_embedding_time": avg_embedding_time,
             "avg_search_time": avg_search_time,
-            "total_time": total_time,
+            "total_time": format_time(total_time),
             "time_saved": (avg_llm_time - avg_cache_time) * self.metrics["cache_hits"] if avg_llm_time and self.metrics["cache_hits"] else 0
         }
 

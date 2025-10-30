@@ -191,3 +191,10 @@ def info_print(msg, INFO):
 def debug_print(msg, DEBUG):
     if DEBUG:
         print(f'[DEBUG] {msg}')
+
+def format_time(seconds: float) -> str:
+    """Convert seconds to hh:mm:ss.000 format."""
+    hours = int(seconds // 3600)
+    minutes = int((seconds % 3600) // 60)
+    secs = seconds % 60
+    return f"{hours:02d}:{minutes:02d}:{secs:06.3f}"
