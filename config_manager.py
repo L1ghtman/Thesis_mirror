@@ -34,6 +34,7 @@ class ExperimentConfig:
     range_min: int
     range_max: int
     use_cache: bool
+    use_temperature: bool
     max_cache_size: int
     cache_strategy: str
     use_LSH: bool

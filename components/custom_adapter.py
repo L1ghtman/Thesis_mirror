@@ -27,8 +27,6 @@ def custom_adapt(llm_handler, cache_data_convert, update_cache_callback, *args, 
     user_top_k = "top_k" in kwargs
     temperature = kwargs.pop("temperature", 0.0)
     chat_cache = kwargs.pop("cache_obj", cache)
-    clusterer = chat_cache.clusterer
-    magnitude_cache = chat_cache.magnitude_cache
     lsh_cache = chat_cache.lsh_cache
     session = kwargs.pop("session", None)
     require_object_store = kwargs.pop("require_object_store", False)
@@ -85,41 +83,8 @@ def custom_adapt(llm_handler, cache_data_convert, update_cache_callback, *args, 
     #    temperature = 2.0 / cache_size
     #print(f"Base temperature: {temperature}")
 
-    # Initialize cluster_id to None - this handles the case where clustering fails
-    cluster_id = None
-    
-    if clusterer is not None and embedding_data is not None:
-        # Get the temperature, and also try to get cluster assignment
+    if config.experiment["use_temperature"]:
         try:
-            temp_result = time_cal(
-                chat_cache.temperature_func,
-                func_name="temperature",
-                report_func=chat_cache.report.clustering,
-            )(clusterer, embedding_data, cache_size, temperature)
-
-            info_print(f"Temperature result: {temp_result}", INFO)
-            
-            # If temperature_func returns a tuple, it might contain (temperature, cluster_id)
-            if isinstance(temp_result, tuple) and len(temp_result) >= 2:
-                temperature, cluster_id = temp_result[0], temp_result[1]
-            else:
-                temperature = temp_result
-                
-                # Try to get cluster ID directly
-                if clusterer.is_fitted and hasattr(clusterer, 'kmeans') and clusterer.kmeans is not None:
-                    query_embedding = np.array(embedding_data).reshape(1, -1)
-                    cluster_id = int(clusterer.kmeans.predict(query_embedding)[0])
-        except Exception as e:
-            print(f"Error in temperature/clustering calculation: {e}")
-    
-    else:
-        #print("Entering temperature calculation")
-        try:
-            #temp_result, magnitude = time_cal(
-            #    chat_cache.temperature_func,
-            #    func_name="temperature",
-            #    report_func=chat_cache.report.temperature,
-            #)(magnitude_cache, embedding_data)
             temp_result, lsh_debug_info = time_cal(
                 chat_cache.temperature_func,
                 func_name="temperature",
@@ -137,6 +102,8 @@ def custom_adapt(llm_handler, cache_data_convert, update_cache_callback, *args, 
 
         except Exception as e:
             print(f"Error in temperature/clustering calculation: {e}")
+    else:
+        temperature = 0
 
     if not hasattr(chat_cache, "last_context"):
         chat_cache.last_context = {}

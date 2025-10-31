@@ -22,9 +22,7 @@ def non_normalized_embedding_func(prompt, extra_param=None):
 
 def temperature_func(clusterer, embedding_data, cache_size, temperature):
     """
-    Calculate the temperature based on the clustering and cache size.
-    Returns a tuple of (temperature, cluster_id) if clustering successful,
-    otherwise just returns the temperature.
+    Calculate temperature based on topic density within the cache.
     """
     # Get config data
     config = get_config

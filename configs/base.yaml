@@ -21,15 +21,18 @@ cache:
 experiment:
   name: "Experiment 1"
 
+  # Logging
+  run_id: '002'
   # Dataset configuration
   dataset_name: "quora"
   load_from_file: false
   partial_questions: true
   range_min: 0
-  range_max: 4
+  range_max: 2
 
   # Cache configuration
-  use_cache: true
+  use_cache: true # This does not do anything currently
+  use_temperature: true
   max_cache_size: 200
   cache_strategy: "dynamic_eviction" # "memory" or "dynamic_eviction"
 
