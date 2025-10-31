@@ -83,28 +83,26 @@ def custom_adapt(llm_handler, cache_data_convert, update_cache_callback, *args, 
     #    temperature = 2.0 / cache_size
     #print(f"Base temperature: {temperature}")
 
-    lsh_debug_info = {}
+    try:
+        temp_result, lsh_debug_info = time_cal(
+            chat_cache.temperature_func,
+            func_name="temperature",
+            report_func=chat_cache.report.temperature,
+        )(lsh_cache, embedding_data)
 
-    if config.experiment["use_temperature"]:
-        try:
-            temp_result, lsh_debug_info = time_cal(
-                chat_cache.temperature_func,
-                func_name="temperature",
-                report_func=chat_cache.report.temperature,
-            )(lsh_cache, embedding_data)
-
-            if isinstance(temp_result, tuple) and len(temp_result) >= 2:
-                temperature, lsh_debug_info = temp_result[0], temp_result[1]
-            else:
-                temperature = temp_result
+        if isinstance(temp_result, tuple) and len(temp_result) >= 2:
+            temperature, lsh_debug_info = temp_result[0], temp_result[1]
+        else:
+            temperature = temp_result
  
-            info_print(f"Temperature result: {temp_result}", INFO)
-            #print("Here !!!")
-            #print(f"custom adapter Debug info: {lsh_debug_info}\n")
+        info_print(f"Temperature result: {temp_result}", INFO)
+        #print("Here !!!")
+        #print(f"custom adapter Debug info: {lsh_debug_info}\n")
 
-        except Exception as e:
-            print(f"Error in temperature/clustering calculation: {e}")
-    else:
+    except Exception as e:
+        print(f"Error in temperature/clustering calculation: {e}")
+
+    if not config.experiment["use_temperature"]:
         temperature = 0
 
     if not hasattr(chat_cache, "last_context"):
@@ -121,7 +119,7 @@ def custom_adapt(llm_handler, cache_data_convert, update_cache_callback, *args, 
     #print(f"Storing temperature in context: {temperature}")
 
     debug_print(f"lsh_debug_info type: {type(lsh_debug_info)}", DEBUG)
-    
+
     context["lsh_debug_info"] = lsh_debug_info
     chat_cache.last_context["lsh_debug_info"] = lsh_debug_info
     #print(f"Storing lsh_debug_info in context")
