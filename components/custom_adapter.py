@@ -83,6 +83,8 @@ def custom_adapt(llm_handler, cache_data_convert, update_cache_callback, *args, 
     #    temperature = 2.0 / cache_size
     #print(f"Base temperature: {temperature}")
 
+    lsh_debug_info = {}
+
     if config.experiment["use_temperature"]:
         try:
             temp_result, lsh_debug_info = time_cal(
@@ -118,6 +120,8 @@ def custom_adapt(llm_handler, cache_data_convert, update_cache_callback, *args, 
     chat_cache.last_context["temperature"] = temperature
     #print(f"Storing temperature in context: {temperature}")
 
+    debug_print(f"lsh_debug_info type: {type(lsh_debug_info)}", DEBUG)
+    
     context["lsh_debug_info"] = lsh_debug_info
     chat_cache.last_context["lsh_debug_info"] = lsh_debug_info
     #print(f"Storing lsh_debug_info in context")
