@@ -5,13 +5,16 @@ import logging
 import numpy as np
 from datetime import datetime
 from typing import Dict, Any, Optional, List, Union
+from config_manager import get_config
 from components.helpers import format_time
 
 class CacheLogger:
 
     def __init__(self, log_dir: str="cache_logs"):
+        self.config = get_config()
         self.log_dir = log_dir
-        self.current_run_id = self._get_next_run_id()
+        #self.current_run_id = self._get_next_run_id()
+        self.current_run_id = self.config.experiment["run_id"]
         self.log_file = self._create_log_file()
         self.metrics = {
             "start_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),

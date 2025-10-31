@@ -27,6 +27,7 @@ class CacheConfig:
 @dataclass
 class ExperimentConfig:
     name: str
+    run_id: str
     dataset_name: str
     load_from_file: bool
     partial_questions: bool

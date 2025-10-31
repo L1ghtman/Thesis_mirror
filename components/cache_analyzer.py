@@ -13,6 +13,7 @@ from collections import defaultdict
 from matplotlib.gridspec import GridSpec
 from typing import List, Dict, Any, Optional, Tuple
 from datetime import datetime
+from config_manager import get_config
 
 pd.set_option('future.no_silent_downcasting', True)
 
@@ -29,6 +30,8 @@ class CachePerformanceAnalyzer:
             log_dir: Directory where log files are stored
             output_dir: Directory where reports will be saved
         """
+        self.config = get_config()
+        self.run_id = self.config.experiment["run_id"]
         self.log_dir = log_dir
         self.output_dir = output_dir
         
@@ -45,6 +48,9 @@ class CachePerformanceAnalyzer:
         Returns:
             The loaded run data as a dictionary
         """
+        if self.run_id:
+            run_id = self.run_id
+
         if run_id is not None:
             log_file = os.path.join(self.log_dir, f"cache_run_{run_id}.json")
             if not os.path.exists(log_file):
