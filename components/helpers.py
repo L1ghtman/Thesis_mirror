@@ -32,7 +32,7 @@ def convo_aware_prompt_format(prompt: str, first_call: bool) -> Tuple[str, bool]
         return (f"{prompt}{EOT}{SH}assistant{EH}\n\n", first_call)
 
 
-def convert_gptcache_report(cache_obj, log_dir="cache_logs"):
+def convert_gptcache_report(cache_obj):
     """Convert GPTCache report to format compatible with cache_analyzer"""
     report = cache_obj.report
 
@@ -57,18 +57,18 @@ def convert_gptcache_report(cache_obj, log_dir="cache_logs"):
         "llm_count":                report.op_llm.count,
         "llm_direct_time":          report.op_llm_direct.total_time,
         "llm_direct_count":         report.op_llm_direct.count,
-        "save_time": report.op_save.total_time,
-        "save_count": report.op_save.count,
-        "average_pre_time": report.op_pre.average(),
-        "average_emb_time": report.op_embedding.average(),
+        "save_time":                report.op_save.total_time,
+        "save_count":               report.op_save.count,
+        "average_pre_time":         report.op_pre.average(),
+        "average_emb_time":         report.op_embedding.average(),
         "average_temperature_time": report.op_temperature.average(),
-        "average_search_time": report.op_search.average(),
-        "average_data_time": report.op_data.average(),
-        "average_eval_time": report.op_evaluation.average(),
-        "average_post_time": report.op_post.average(),
-        "average_llm_time": report.op_llm.average(),
-        "average_save_time": report.op_save.average(),
-        "cache_hits": report.hint_cache_count,
+        "average_search_time":      report.op_search.average(),
+        "average_data_time":        report.op_data.average(),
+        "average_eval_time":        report.op_evaluation.average(),
+        "average_post_time":        report.op_post.average(),
+        "average_llm_time":         report.op_llm.average(),
+        "average_save_time":        report.op_save.average(),
+        "cache_hits":               report.hint_cache_count,
         }
     
     return full_metrics
@@ -122,7 +122,6 @@ def process_request(question, cached_llm, semantic_cache, CacheLogger):
     used_cache          = None
 
     if hasattr(semantic_cache, 'last_context') and semantic_cache.last_context:
-        #cluster_id = semantic_cache.last_context.get('cluster_id')
         temperature         = semantic_cache.last_context.get('temperature')
         similarity_score    = semantic_cache.last_context.get('similarity_score')
         lsh_debug_info      = semantic_cache.last_context.get('lsh_debug_info')
@@ -134,16 +133,9 @@ def process_request(question, cached_llm, semantic_cache, CacheLogger):
         last_bucket         = last_lsh_debug['last_bucket']
         hamming_distance    = sum(c1 != c2 for c1, c2 in zip(current_bucket, last_bucket))
 
-    #print(f"temperature: {temperature}")
-    #if lsh_debug_info:
-        #print(f"LSH Debug: {lsh_debug_info}")
-        #print("Got LSH debug info")
-
     response_time   = time.time() - start_time
     report_metrics  = convert_gptcache_report(semantic_cache)
 
-    #print(f"Direct LLM calls: {semantic_cache.report.op_llm_direct.count}")
-    
     CacheLogger.log_request(
         query               =question,
         response            =answer,
@@ -152,8 +144,6 @@ def process_request(question, cached_llm, semantic_cache, CacheLogger):
         similarity_score    =similarity_score,
         used_cache          =used_cache,
         temperature         =temperature,
-        #magnitude=magnitude,
-        #cluster_id=cluster_id,
         hamming_distance    =hamming_distance,
         debug_info          =lsh_debug_info,
         report_metrics      =report_metrics
