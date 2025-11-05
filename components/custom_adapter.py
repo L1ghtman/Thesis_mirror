@@ -44,7 +44,6 @@ def custom_adapt(llm_handler, cache_data_convert, update_cache_callback, *args, 
 
     info_print("\033[91mUsing custom adapter.\033[0m", INFO)
 
-
     cache_factor = kwargs.pop("cache_factor", 1.0)
     pre_embedding_res = time_cal(
         chat_cache.pre_embedding_func,
@@ -104,6 +103,7 @@ def custom_adapt(llm_handler, cache_data_convert, update_cache_callback, *args, 
 
     if not config.experiment["use_temperature"]:
         temperature = 0
+        info_print(f"Temperature override! New value: {temperature}", INFO)
 
     if not hasattr(chat_cache, "last_context"):
         chat_cache.last_context = {}
@@ -118,7 +118,7 @@ def custom_adapt(llm_handler, cache_data_convert, update_cache_callback, *args, 
     chat_cache.last_context["temperature"] = temperature
     #print(f"Storing temperature in context: {temperature}")
 
-    debug_print(f"lsh_debug_info type: {type(lsh_debug_info)}", DEBUG)
+    #debug_print(f"lsh_debug_info type: {type(lsh_debug_info)}", DEBUG)
 
     context["lsh_debug_info"] = lsh_debug_info
     chat_cache.last_context["lsh_debug_info"] = lsh_debug_info
@@ -300,6 +300,15 @@ def custom_adapt(llm_handler, cache_data_convert, update_cache_callback, *args, 
                     round(time.time() - start_time, 6),
                 )
             return cache_data_convert(return_message)
+
+    print("\n")
+    debug_print(f"Context gathered this loop:", DEBUG)
+    if len(chat_cache.last_context) == 0:
+        debug_print("None, context is empty.\n", DEBUG)
+    else:
+        for key in chat_cache.last_context:
+            debug_print(f"{key}: {chat_cache.last_context[key]}", DEBUG)
+        print("\n")
 
     next_cache = chat_cache.next_cache
     if next_cache:

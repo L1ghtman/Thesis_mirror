@@ -783,15 +783,6 @@ class CachePerformanceAnalyzer:
                 self.plot_lsh_adaptive_behavior(run_data, adaptive_path)
                 lsh_plot_paths["adaptive_behavior"] = os.path.basename(adaptive_path)
 
-                #magnitude_path = os.path.join(self.output_dir, f"run_{run_id}", "embedding_magnitudes.png")
-                #self.plot_embedding_magnitude_distribution(run_data, magnitude_path)
-                #plot_paths["embedding_magnitudes"] = os.path.basename(magnitude_path)
-
-                # Generate the cluster analysis plot
-                #cluster_path = os.path.join(self.output_dir, f"run_{run_id}", "cluster_analysis.png")
-                #self.plot_cluster_analysis(run_data, cluster_path)
-                #plot_paths["cluster_analysis"] = os.path.basename(cluster_path)
-
             # Calculate performance stats for dashboard
             total_requests = summary["total_requests"]
             cache_hits = summary["cache_hits"]

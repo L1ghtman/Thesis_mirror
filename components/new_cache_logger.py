@@ -6,12 +6,13 @@ import numpy as np
 from datetime import datetime
 from typing import Dict, Any, Optional, List, Union
 from config_manager import get_config
-from components.helpers import format_time
+from components.helpers import format_time, get_info_level, info_print, debug_print
 
 class CacheLogger:
 
     def __init__(self, log_dir: str="cache_logs"):
         self.config = get_config()
+        self.INFO, self.DEBUG = get_info_level(self.config)
         self.log_dir = log_dir
         #self.current_run_id = self._get_next_run_id()
         self.current_run_id = self.config.experiment["run_id"]
@@ -98,8 +99,6 @@ class CacheLogger:
                     used_cache: bool,
                     similarity_score: Optional[float] = None,
                     temperature: Optional[float] = None,
-                    magnitude: Optional[float] = None,
-                    cluster_id: Optional[int] = None,
                     lsh_bucket: Optional[str] = None,
                     bucket_density: Optional[float] = None,
                     neighbor_contribution: Optional[float] = None,
@@ -108,18 +107,10 @@ class CacheLogger:
                     debug_info: Optional[Dict[str, Any]] = None,
                     report_metrics: Dict[str, Any] = {}):
         
-        #print(f"Debug info in log_request: {debug_info}")
-        
-        #self.metrics["clustering_times"].append(report_metrics.get("clustering_time", 0))
         self.metrics["temperature_times"].append(report_metrics.get("temperature_time", 0))
         self.metrics["lsh_debug_info"].append(debug_info if debug_info else {})
 
         self.metrics["llm_direct_calls"] = report_metrics.get("llm_direct_count", 0)
-
-        #print(f"Cache Logger Direct LLM calls: {self.metrics['llm_direct_calls']}")
-
-        #print(f"cluster times: {self.metrics['clustering_times']}")
-        #print(f"temperature times: {self.metrics['temperature_times']}")
 
         if used_cache:
             if is_cache_hit:
@@ -135,9 +126,9 @@ class CacheLogger:
             self.metrics["llm_response_times"].append(response_time)
             event_type = "LLM_DIRECT_CALL"
 
-        if cluster_id is None and report_metrics.get("semantic_cache") is not None:
-            if hasattr(report_metrics["semantic_cache"], "last_cluster_id"):
-                cluster_id = report_metrics["semantic_cache"].last_cluster_id
+#        if cluster_id is None and report_metrics.get("semantic_cache") is not None:
+#            if hasattr(report_metrics["semantic_cache"], "last_cluster_id"):
+#                cluster_id = report_metrics["semantic_cache"].last_cluster_id
 
         if debug_info and isinstance(debug_info, dict):
             lsh_bucket = debug_info.get('lsh_bucket', lsh_bucket)
@@ -154,25 +145,19 @@ class CacheLogger:
             "similarity_score": similarity_score,
             "used_cache": used_cache,
             "temperature": temperature,
-            "magnitude": magnitude,
             "lsh_bucket": lsh_bucket,
             "bucket_density": bucket_density,
             "neighbor_contribution": neighbor_contribution,
             "bucket_reuse_count": bucket_reuse_count,
         }
 
-        #if cluster_id is not None:
-        #    request_data["cluster_id"] = cluster_id
-        #    print(f"Logging request with cluster_id: {cluster_id}")        
-
         self.metrics["requests"].append(request_data)
 
         for key, value in report_metrics.items():
             self.metrics[key] = value
 
-        #self.logger.info(f"{event_type}: query='{query[:50]}...' time={response_time:.4f}s cluster_id={cluster_id}")
-
         self._save_metrics()
+        debug_print(f"log_request called! similarity_score: {similarity_score}", self.DEBUG)
 
     def log_summary(self) -> Dict[str, Any]:
         cache_hit_rate = self.metrics["cache_hits"] / self.metrics["pre_process_count"]
@@ -180,13 +165,7 @@ class CacheLogger:
         total_time = sum(self.metrics["cache_response_times"]) + sum(self.metrics["llm_response_times"])
         avg_cache_time = sum(self.metrics["cache_response_times"]) / len(self.metrics["cache_response_times"]) if self.metrics["cache_response_times"] else 0
         avg_llm_time = sum(self.metrics["llm_response_times"]) / len(self.metrics["llm_response_times"]) if self.metrics["llm_response_times"] else 0
-        #avg_cluster_time = sum(self.metrics["clustering_times"]) / len(self.metrics["clustering_times"]) if self.metrics["clustering_times"] else 0
         avg_temperature_time = sum(self.metrics["temperature_times"]) / len(self.metrics["temperature_times"]) if self.metrics["temperature_times"] else 0
-
-        #print(f"avg cluster times: {avg_cluster_time}")
-        #print(f"avg temperature times: {avg_temperature_time}")
-
-        #print(f"Cache logger summary llm direct calls: {self.metrics['llm_direct_calls']}")
 
         avg_embedding_time = self.metrics["embedding_time"] / self.metrics["embedding_count"] if self.metrics["embedding_count"] else 0
         avg_search_time = self.metrics["search_time"] / self.metrics["search_count"] if self.metrics["search_count"] else 0

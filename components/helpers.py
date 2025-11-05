@@ -121,11 +121,19 @@ def process_request(question, cached_llm, semantic_cache, CacheLogger):
     hamming_distance    = None
     used_cache          = None
 
+    # This just reads the values from the 'last_context'. If they are not updated in the next run, values form previous loops will appear in the current loop
+#    if hasattr(semantic_cache, 'last_context') and semantic_cache.last_context:
+#        temperature         = semantic_cache.last_context.get('temperature')
+#        similarity_score    = semantic_cache.last_context.get('similarity_score')       # This value seems to get carried over from loop to loop until a request hits the cache
+#        lsh_debug_info      = semantic_cache.last_context.get('lsh_debug_info')
+#        used_cache          = semantic_cache.last_context.get('used_cache')
+
+    # This approach reads and removes the items from the last context. This way, the next loop will populate the context only from available data. Entries from previous runs don't get carried over.
     if hasattr(semantic_cache, 'last_context') and semantic_cache.last_context:
-        temperature         = semantic_cache.last_context.get('temperature')
-        similarity_score    = semantic_cache.last_context.get('similarity_score')
-        lsh_debug_info      = semantic_cache.last_context.get('lsh_debug_info')
-        used_cache          = semantic_cache.last_context.get('used_cache')
+        temperature         = semantic_cache.last_context.pop('temperature', None)
+        similarity_score    = semantic_cache.last_context.pop('similarity_score', None)
+        lsh_debug_info      = semantic_cache.last_context.pop('lsh_debug_info', None)
+        used_cache          = semantic_cache.last_context.pop('used_cache', None)
 
     # Calculate hamming distance if we have both current and last bucket
     if lsh_debug_info and last_lsh_debug and 'lsh_bucket' in lsh_debug_info and 'last_bucket' in last_lsh_debug:
@@ -152,6 +160,7 @@ def process_request(question, cached_llm, semantic_cache, CacheLogger):
     print(f"Question: {question}")
     print("Time consuming: {:.2f}s".format(response_time))
     print(f"Answer: {answer}\n")
+    info_print(f"Logged similarity score: {similarity_score}\n", True)
     print("\033[94m" + "-----------------------------------------------------------" + "\033[0m\n")
 
 
