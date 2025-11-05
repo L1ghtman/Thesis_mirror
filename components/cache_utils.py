@@ -4,15 +4,22 @@ import logging
 import traceback
 import numpy as np
 from gptcache.core import Cache
-from gptcache.embedding import SBERT
+from gptcache.embedding import SBERT, Huggingface
 from transformers import AutoTokenizer, AutoModel
 from components import cache_analyzer
 from config_manager import get_config
 from components.helpers import get_info_level, debug_print, info_print
+from transformers import AutoTokenizer, AutoModel
 
 def embedding_func(prompt, extra_param=None):
+    encoder = SBERT('all-MiniLM-L6-v2')
+    embedding = encoder.to_embeddings(prompt)
+    return tuple(embedding)
+
+def custom_embedding_func(prompt, extra_param=None):
     config = get_config()
     model = config.sys['embedding_model']
+    print(f"[DEBUG] using model {model}")
     encoder = SBERT(model)
     embedding = encoder.to_embeddings(prompt)
     return tuple(embedding)

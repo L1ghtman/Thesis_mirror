@@ -19,7 +19,7 @@ from gptcache.manager import CacheBase, VectorBase, get_data_manager
 from gptcache.manager.eviction import EvictionBase
 from gptcache.similarity_evaluation import SbertCrossencoderEvaluation
 from components.dataset_manager import DatasetManager
-from components.cache_utils import embedding_func, system_cleanup, lsh_temperature_func
+from components.cache_utils import embedding_func, custom_embedding_func, system_cleanup, lsh_temperature_func
 from components import custom_llm, new_cache_logger, cache_analyzer, lsh_based_estimator
 from components.helpers import info_print, debug_print, get_info_level, process_request
 
@@ -104,7 +104,7 @@ def main():
         semantic_cache = Cache()
 
         semantic_cache.init(
-            embedding_func=embedding_func,
+            embedding_func=custom_embedding_func,
             data_manager=data_manager,
             similarity_evaluation=SbertCrossencoderEvaluation(),
             pre_embedding_func=get_prompt,
