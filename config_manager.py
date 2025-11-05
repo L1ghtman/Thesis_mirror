@@ -8,6 +8,7 @@ from dataclasses import dataclass, asdict
 @dataclass
 class SystemConfig:
     info_level: int
+    embedding_model: str
 
 @dataclass
 class LoggingConfig:

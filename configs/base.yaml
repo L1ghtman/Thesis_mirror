@@ -1,6 +1,7 @@
 # System
 sys:
   info_level: 3 # 0: no info, 1: INFO tags, 2: DEBUG tags, 3: INFO+DEBUG tags
+  embedding_model: "all-MiniLM-L6-v2" # all-MiniLM-L6-v2 (6-layer, 384-dim), all-MiniLM-L12-v2 (12-layer, 768-dim), all-mpnet-base-v2 (768)
 
 # Logging
 logging:
@@ -9,7 +10,7 @@ logging:
 
 # Vector Store
 vector_store:
-  dimension: 384
+  dimension: 384 # 384, 768, 1024 depending on embedding model
   index_type: "IDMap,Flat"
   metric_type: 1 # faiss.METRIC_L2
 
@@ -22,13 +23,13 @@ experiment:
   name: "Experiment 1"
 
   # Logging
-  run_id: '002'
+  run_id: '006'
   # Dataset configuration
   dataset_name: "quora"
   load_from_file: false
   partial_questions: true
   range_min: 0
-  range_max: 2
+  range_max: 16
 
   # Cache configuration
   use_cache: true # This does not do anything currently

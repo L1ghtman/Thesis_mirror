@@ -11,7 +11,9 @@ from config_manager import get_config
 from components.helpers import get_info_level, debug_print, info_print
 
 def embedding_func(prompt, extra_param=None):
-    encoder = SBERT('all-MiniLM-L6-v2')
+    config = get_config()
+    model = config.sys['embedding_model']
+    encoder = SBERT(model)
     embedding = encoder.to_embeddings(prompt)
     return tuple(embedding)
 

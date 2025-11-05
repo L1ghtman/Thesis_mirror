@@ -9,7 +9,7 @@ from config_manager import get_config
 from components.helpers import get_info_level, info_print, debug_print
 
 class LSHEstimator:
-    def __init__(self, embedding_dim=384, num_hyperplanes=16, window_size=1000):
+    def __init__(self, embedding_dim, num_hyperplanes, window_size):
         # Original LSH components
         self.num_hyperplanes = num_hyperplanes
         self.hyperplanes = np.random.randn(num_hyperplanes, embedding_dim)
@@ -65,6 +65,7 @@ class LSHEstimator:
         Estimate topic density using LSH with comprehensive tracking
         Returns: (temperature, debug_info)
         """
+        # TODO: Is this really needed?
         timestamp = datetime.now()
         
         # Get bucket
@@ -277,7 +278,7 @@ class LSHEstimator:
 
 
 class LSHCache:
-    def __init__(self, embedding_dim=384, num_hyperplanes=8, window_size=1000):
+    def __init__(self):
         self.config = get_config()
         self.estimator = LSHEstimator(self.config.vector_store['dimension'],
                                       self.config.experiment['num_hyperplanes'], 
