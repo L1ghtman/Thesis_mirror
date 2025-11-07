@@ -55,7 +55,7 @@ def main():
             "index_path": os.path.join(CACHE_DIR, "faiss.index"),
         }
 
-        cache_base = CacheBase("sqlite", sql_url=f"sqlite:///{os.path.join(CACHE_DIR, 'cache.db')}")
+        cache_base  = CacheBase("sqlite", sql_url=f"sqlite:///{os.path.join(CACHE_DIR, 'cache.db')}")
         vector_base = VectorBase("faiss", **vector_store_params)
 
         max_cache_size = config.experiment['max_cache_size']
@@ -64,8 +64,9 @@ def main():
         data_manager = get_data_manager(cache_base, vector_base, max_size=max_cache_size, name=cache_strategy)
 
         dataset_manager = DatasetManager()
-        dataset_name = config.experiment['dataset_name']
-        load_from_file = config.experiment['load_from_file']
+        dataset_name    = config.experiment['dataset_name']
+        load_from_file  = config.experiment['load_from_file']
+        sample_size     = config.experiment['sample_size']
 
         if load_from_file:
             dataset_name = dataset_manager.load(
@@ -80,7 +81,8 @@ def main():
 #        )
 
         dataset_name = dataset_manager.load(
-            dataset=dataset_name,
+            dataset     = dataset_name,
+            max_samples = sample_size
         )
 
         debug_print(dataset_name, DEBUG)

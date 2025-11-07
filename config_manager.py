@@ -31,6 +31,7 @@ class ExperimentConfig:
     run_id: str
     dataset_name: str
     load_from_file: bool
+    sample_size: int
     partial_questions: bool
     range_min: int
     range_max: int

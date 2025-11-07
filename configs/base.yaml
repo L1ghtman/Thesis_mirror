@@ -1,7 +1,7 @@
 # System
 sys:
   info_level: 3 # 0: no info, 1: INFO tags, 2: DEBUG tags, 3: INFO+DEBUG tags
-  embedding_model: "all-mpnet-base-v2" # all-MiniLM-L6-v2 (6-layer, 384-dim), all-MiniLM-L12-v2 (12-layer, 768-dim), all-mpnet-base-v2 (12-layer, 768-dim)
+  embedding_model: "all-roberta-large-v1" # all-MiniLM-L6-v2 (6-layer, 384-dim), all-MiniLM-L12-v2 (12-layer, 768-dim), all-mpnet-base-v2 (12-layer, 768-dim), all-roberta-large-v1 (24-layer, 1024-dim)
 
 # Logging
 logging:
@@ -10,7 +10,7 @@ logging:
 
 # Vector Store
 vector_store:
-  dimension: 768 # 384, 768, 1024 depending on embedding model
+  dimension: 1024 # 384, 768, 1024 depending on embedding model
   index_type: "IDMap,Flat"
   metric_type: 1 # faiss.METRIC_L2
 
@@ -27,9 +27,10 @@ experiment:
   # Dataset configuration
   dataset_name: "quora"
   load_from_file: false
+  sample_size: 1000 # when using quora, sample_size is doubled due to question pairs
   partial_questions: true
   range_min: 0
-  range_max: 16
+  range_max: 12
 
   # Cache configuration
   use_cache: true # This does not do anything currently
@@ -40,7 +41,7 @@ experiment:
   # LSH configuration
   use_LSH: true
   bucket_density_factor: 0.7
-  num_hyperplanes: 8
+  num_hyperplanes: 8 # this defines the bucket size
   window_size: 1000
   sensitivity: 2.0
   decay_rate: 5.0

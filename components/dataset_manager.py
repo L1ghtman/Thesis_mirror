@@ -170,7 +170,7 @@ class DatasetManager:
             print(f"Error loading Yahoo Answers dataset: {e}")
             return None
     
-    def load_quora_question_pairs(self, split: str = "train", max_samples: Optional[int] = 1000) -> str:
+    def load_quora_question_pairs(self, split: str = "train", max_samples: Optional[int] = 5) -> str:
         """
         Load the Quora question-pairs dataset
         
@@ -193,7 +193,7 @@ class DatasetManager:
                 "description": f"Quora question-pairs {split} dataset (max {max_samples} samples)"
             }
 
-            info_print(f"Loaded {len(ds)} samples from Quora question-pairs {split} dataset", self.INFO)
+            info_print(f"Loaded {len(ds)*2} samples from Quora question-pairs {split} dataset", self.INFO)
             return dataset_name
 
         except Exception as e:
