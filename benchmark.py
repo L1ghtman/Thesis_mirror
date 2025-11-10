@@ -45,6 +45,11 @@ def main():
             stream=sys.stdout
         )
 
+        if config.sys['hpc']:
+            job_id = os.environ.get('SLURM_JOB_ID', 'local')
+            CACHE_DIR = f"{CACHE_DIR}_{job_id}"
+            os.makedirs(CACHE_DIR, exist_ok=True)
+
         CACHE_DIR = config.cache['CACHE_DIR']
         os.makedirs(CACHE_DIR, exist_ok=True)
 

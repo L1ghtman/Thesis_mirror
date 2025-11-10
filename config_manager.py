@@ -9,6 +9,7 @@ from dataclasses import dataclass, asdict
 class SystemConfig:
     info_level: int
     embedding_model: str
+    hpc: bool
 
 @dataclass
 class LoggingConfig:

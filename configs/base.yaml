@@ -2,6 +2,7 @@
 sys:
   info_level: 3 # 0: no info, 1: INFO tags, 2: DEBUG tags, 3: INFO+DEBUG tags
   embedding_model: "all-roberta-large-v1" # all-MiniLM-L6-v2 (6-layer, 384-dim), all-MiniLM-L12-v2 (12-layer, 768-dim), all-mpnet-base-v2 (12-layer, 768-dim), all-roberta-large-v1 (24-layer, 1024-dim)
+  hpc: false
 
 # Logging
 logging:
