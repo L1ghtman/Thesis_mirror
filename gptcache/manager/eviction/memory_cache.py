@@ -1,8 +1,9 @@
-from typing import Any, Callable, List
+from typing import Any, Callable, List, Tuple
 
 import cachetools
 
 from gptcache.manager.eviction.base import EvictionBase
+from adaptive_pipeline import AdaptivePipelineCache
 
 
 def popitem_wrapper(func, wrapper_func, clean_size):
@@ -53,6 +54,10 @@ class MemoryCacheEviction(EvictionBase):
             self._cache = cachetools.FIFOCache(maxsize=maxsize, **kwargs)
         elif self._policy == "RR":
             self._cache = cachetools.RRCache(maxsize=maxsize, **kwargs)
+        elif self._policy =="AP":
+            #self._cache = AdaptivePipelineCache(maxsize=maxsize, **kwargs)
+            config_path = '.venv/lib/python3.12/site-packages/adaptive_pipeline/config.json'
+            self._cache = AdaptivePipelineCache(config_path=config_path)
         else:
             raise ValueError(f"Unknown policy {policy}")
 
@@ -61,9 +66,10 @@ class MemoryCacheEviction(EvictionBase):
 
         self._cache.popitem = popitem_wrapper(self._cache.popitem, on_evict, clean_size)
 
-    def put(self, objs: List[Any]):
+    def put(self, objs: List[Tuple[int, Tuple[float, int]]]):
         for obj in objs:
-            self._cache[obj] = True
+            if isinstance(obj, tuple):
+                self._cache[obj[0]] = obj[1]
 
     def get(self, obj: Any):
         return self._cache.get(obj)

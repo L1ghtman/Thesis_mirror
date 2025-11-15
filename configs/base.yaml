@@ -36,8 +36,9 @@ experiment:
   # Cache configuration
   use_cache: true # This does not do anything currently
   use_temperature: true
-  max_cache_size: 200
-  cache_strategy: "dynamic_eviction" # "memory" or "dynamic_eviction"
+  max_cache_size: 2
+  cache_strategy: "memory" # "memory" or "dynamic_eviction"
+  eviction_policy: "AP"
 
   # LSH configuration
   use_LSH: true

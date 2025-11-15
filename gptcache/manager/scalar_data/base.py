@@ -22,7 +22,12 @@ class Answer:
     """
 
     answer: Any
+    latency: int
     answer_type: int = DataType.STR
+
+    @property
+    def length(self) -> int:
+        return len(self.answer)
 
 
 @dataclass

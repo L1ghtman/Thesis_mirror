@@ -18,7 +18,7 @@ class EvictionBase:
     @staticmethod
     def get(
         name: str,
-        policy: str = "LRU",
+        policy: str = "LFU",
         maxsize: int = 2,
         clean_size: int = 1,
         on_evict: Callable[[List[Any]], None] = None,
@@ -51,6 +51,5 @@ class EvictionBase:
                 policy="dyn", maxsize=maxsize, clean_size=clean_size, on_evict=on_evict, **kwargs
             )
             return eviction_base
-
         else:
             raise NotFoundError("eviction base", name)

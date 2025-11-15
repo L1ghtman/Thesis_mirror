@@ -250,7 +250,7 @@ class SSDataManager(DataManager):
         self.eviction_manager = EvictionManager(self.s, self.v)
         if e is None:
             e = EvictionBase(# original
-                            name=name,
+                             name=name,
                              maxsize=max_size,
                              # for testing 
                              #name="dynamic_eviction",
@@ -281,7 +281,7 @@ class SSDataManager(DataManager):
         if self.eviction_manager.check_evict():
             self.eviction_manager.delete()
 
-    def save(self, question, answer, embedding_data, **kwargs):
+    def save(self, question: str, answer: Answer, embedding_data: List[float], **kwargs):
         """Save the data and vectors to cache and vector storage.
 
         :param question: question data.
@@ -365,7 +365,7 @@ class SSDataManager(DataManager):
                 for i, embedding_data in enumerate(embedding_datas)
             ]
         )
-        self.eviction_base.put(ids)
+        self.eviction_base.put([(ids[0], (answers[0].latency, answers[0].length))])
 
     def get_scalar_data(self, res_data, **kwargs) -> Optional[CacheData]:
         session = kwargs.get("session", None)

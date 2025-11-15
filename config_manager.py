@@ -40,6 +40,7 @@ class ExperimentConfig:
     use_temperature: bool
     max_cache_size: int
     cache_strategy: str
+    eviction_policy: str
     use_LSH: bool
     bucket_density_factor: float
     num_hyperplanes: int

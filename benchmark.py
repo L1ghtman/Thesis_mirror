@@ -63,10 +63,11 @@ def main():
         cache_base  = CacheBase("sqlite", sql_url=f"sqlite:///{os.path.join(CACHE_DIR, 'cache.db')}")
         vector_base = VectorBase("faiss", **vector_store_params)
 
-        max_cache_size = config.experiment['max_cache_size']
-        cache_strategy = config.experiment['cache_strategy']
+        max_cache_size  = config.experiment['max_cache_size']
+        cache_strategy  = config.experiment['cache_strategy']
+        eviction_policy = config.experiment['eviction_policy']
         
-        data_manager = get_data_manager(cache_base, vector_base, max_size=max_cache_size, name=cache_strategy)
+        data_manager = get_data_manager(cache_base, vector_base, max_size=max_cache_size, name=cache_strategy, eviction=eviction_policy)
 
         dataset_manager = DatasetManager()
         dataset_name    = config.experiment['dataset_name']
