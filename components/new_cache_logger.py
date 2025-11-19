@@ -11,13 +11,14 @@ from components.helpers import format_time, get_info_level, info_print, debug_pr
 class CacheLogger:
 
     def __init__(self, log_dir: str="cache_logs"):
-        self.config = get_config()
-        self.INFO, self.DEBUG = get_info_level(self.config)
-        self.log_dir = log_dir
+        self.config             = get_config()
+        self.INFO, self.DEBUG   = get_info_level(self.config)
+        self.log_dir            = log_dir
         #self.current_run_id = self._get_next_run_id()
-        self.current_run_id = self.config.experiment["run_id"]
-        self.log_file = self._create_log_file()
-        self.metrics = {
+        self.current_run_id     = self.config.experiment["run_id"]
+        self.model              = self.config.sys['model']
+        self.log_file           = self._create_log_file()
+        self.metrics            = {
             "start_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "pre_process_time": 0, 
             "pre_process_count": 0,
@@ -172,6 +173,7 @@ class CacheLogger:
 
         summary = {
             "run_id": self.current_run_id,
+            "model": self.model,
             "total_requests": self.metrics["pre_process_count"],
             "cache_hits": self.metrics["cache_hits"],
             "cache_misses": self.metrics["pre_process_count"] - self.metrics["cache_hits"],

@@ -37,6 +37,10 @@ def main():
         config = get_config()
         INFO, DEBUG = get_info_level(config)
 
+        model_name = config.sys['model']
+        
+        info_print(f"Running benchmark with model: {model_name}", INFO)
+
         print(f'\033[1m\033[30m\033[44m[TEST] INFO={INFO}, DEBUG={DEBUG}\033[0m')
 
         logging.basicConfig(

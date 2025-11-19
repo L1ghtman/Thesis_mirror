@@ -8,6 +8,7 @@ from dataclasses import dataclass, asdict
 @dataclass
 class SystemConfig:
     info_level: int
+    model: str
     embedding_model: str
     hpc: bool
 
