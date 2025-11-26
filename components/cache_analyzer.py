@@ -265,7 +265,7 @@ class CachePerformanceAnalyzer:
             cache_misses = len(df[df["cache_hit"] == False])
             positive_hits = len(df[(df["cache_hit"] == True) & (df["positive_hit"] == True)])
             negative_hits = len(df[(df["cache_hit"] == True) & (df["positive_hit"] == False)])
-            #llm_direct_calls = len(df[df["used_cache"] == False])
+            llm_direct_calls = len(df[df["used_cache"] == False])
 
             
             # Get response times

@@ -55,8 +55,7 @@ class MemoryCacheEviction(EvictionBase):
         elif self._policy == "RR":
             self._cache = cachetools.RRCache(maxsize=maxsize, **kwargs)
         elif self._policy =="AP":
-            #self._cache = AdaptivePipelineCache(maxsize=maxsize, **kwargs)
-            config_path = '.venv/lib/python3.12/site-packages/adaptive_pipeline/config.json'
+            config_path = 'config.json'
             self._cache = AdaptivePipelineCache(config_path=config_path)
         else:
             raise ValueError(f"Unknown policy {policy}")
