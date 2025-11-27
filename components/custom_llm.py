@@ -19,6 +19,7 @@ class localLlama(LLM):
         # Initialize the client. We're using the OpenAI API here but redirecting to a local server.
         self.client = OpenAI(base_url="http://127.0.0.1:8080/v1", api_key="sk-xxx")
         #self.client = OpenAI(base_url="http://localhost:1337/v1", api_key="sk-xxx")
+        self.system_prompt = ""
     @property
     def _llm_type(self) -> str:
         return "custom local"
@@ -37,7 +38,14 @@ class localLlama(LLM):
         response = self.client.chat.completions.create(
             model="llama3",
             messages=[
-                {"role": "user", "content": prompt}
+                {
+                    "role": "system", 
+                    "content": self.system_prompt
+                },
+                {
+                    "role": "user", 
+                    "content": prompt
+                }
             ],
             max_tokens=1000,
             temperature=0.7,
