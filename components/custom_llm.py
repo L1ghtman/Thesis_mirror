@@ -19,7 +19,7 @@ class localLlama(LLM):
         # Initialize the client. We're using the OpenAI API here but redirecting to a local server.
         self.client = OpenAI(base_url="http://127.0.0.1:8080/v1", api_key="sk-xxx")
         #self.client = OpenAI(base_url="http://localhost:1337/v1", api_key="sk-xxx")
-        self.system_prompt = ""
+        self.system_prompt = "You are a helpful AI assistant. Provide clear, accurate, and concise responses to user queries. Keep your answers factual and well-structured. Prioritize the most essential information and avoid unnecessary elaboration. Aim for responses under 150 words unless the question clearly requires more detail."
     @property
     def _llm_type(self) -> str:
         return "custom local"
