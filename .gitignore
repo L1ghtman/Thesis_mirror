@@ -15,3 +15,12 @@ remote_logs/
 remote_reports/
 debug.log
 persistent_cache/
+dataset_cache/
+.deepeval/
+logs/
+playground/
+tiny-GPTCache/
+quora_qp_results/
+quora_qp_dataset.py
+quora_sample.txt
+test_example.py

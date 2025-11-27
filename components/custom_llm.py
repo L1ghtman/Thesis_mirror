@@ -12,6 +12,7 @@ class localLlama(LLM):
     model_name: ClassVar[str] = "inet/llama3"
     client: Any = None
     first_call: bool = True
+    system_prompt: str = "You are a helpful AI assistant."
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
