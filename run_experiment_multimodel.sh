@@ -143,39 +143,69 @@ trap cleanup EXIT INT TERM
 echo "Waiting for LLM server to load model (approximately 3-4 minutes)..."
 
 # Wait 4 minutes for model to load
-WAIT_TIME=240
-for i in $(seq 1 $WAIT_TIME); do
-    if ! kill -0 $SERVER_PID 2>/dev/null; then
-        echo "ERROR: Server process died at $i seconds!"
-        exit 1
+#WAIT_TIME=240
+#for i in $(seq 1 $WAIT_TIME); do
+#    if ! kill -0 $SERVER_PID 2>/dev/null; then
+#        echo "ERROR: Server process died at $i seconds!"
+#        exit 1
+#    fi
+#    
+#    # Show progress every 30 seconds
+#    if [ $((i % 30)) -eq 0 ]; then
+#        echo "Still waiting... ($i/$WAIT_TIME seconds elapsed)"
+#    fi
+#    
+#    sleep 1
+#done
+#
+#echo "Wait complete. Server should be ready now."
+#
+## Simple connectivity test using Python
+#echo "Testing server connectivity..."
+#python3 << 'PYEOF'
+#import urllib.request
+#import sys
+#
+#try:
+#    response = urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=10)
+#    print(f"✓ Server is responding! Status: {response.getcode()}")
+#    sys.exit(0)
+#except Exception as e:
+#    print(f"⚠ Could not connect to server: {e}")
+#    print("Continuing anyway - server may still be starting...")
+#    sys.exit(0)  # Don't fail the job, just warn
+#PYEOF
+
+MAX_WAIT=300
+WAIT_COUNT=0
+
+while [ $WAIT_COUNT -lt $MAX_WAIT ]; do
+    if curl -s --max-time 5 http://127.0.0.1:8080/health > /dev/null 2>&1; then
+        echo "✓ Server health check passed after ${WAIT_COUNT}s"
+        break
     fi
-    
-    # Show progress every 30 seconds
-    if [ $((i % 30)) -eq 0 ]; then
-        echo "Still waiting... ($i/$WAIT_TIME seconds elapsed)"
+    if ! kill -0 $SERVER_PID 2> /dev/null; then
+        echo "Error: Server process died during startup!"
     fi
-    
+    if [ $((WAIT_COUNT % 30)) -eq 0 ] && [ $WAIT_COUNT -gt 0 ]; then
+        echo "Still waiting... (${WAIT_COUNT}s elapsed)"
+    fi
     sleep 1
+    WAIT_COUNT=$((WAIT_COUNT + 1))
 done
 
-echo "Wait complete. Server should be ready now."
+echo "Sending warmup inference request to initialize CUDA kernels..."
+WARMUP_RESPONSE=$(curl -s --max-time 120 -X POST http://127.0.0.1:8080/completion \
+    -H "Content-Type: application/json" \
+    -d '{"prompt": "Hello", "n_predict": 10}')
+if echo "$WARMUP_RESPONSE" | grep -q "content"; then
+    echo "✓ Warmup request completed successfully"
+else
+    echo "⚠ Warmup response unexpected: $WARMUP_RESPONSE"
+    echo "Continuing anyway..."
+fi
 
-# Simple connectivity test using Python
-echo "Testing server connectivity..."
-python3 << 'PYEOF'
-import urllib.request
-import sys
-
-try:
-    response = urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=10)
-    print(f"✓ Server is responding! Status: {response.getcode()}")
-    sys.exit(0)
-except Exception as e:
-    print(f"⚠ Could not connect to server: {e}")
-    print("Continuing anyway - server may still be starting...")
-    sys.exit(0)  # Don't fail the job, just warn
-PYEOF
-
+echo "Server fully initialized."
 echo "Starting GPTCache experiment..."
 
 # Run the benchmark with the specified config file
