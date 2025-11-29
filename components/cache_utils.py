@@ -11,6 +11,16 @@ from config_manager import get_config
 from components.helpers import get_info_level, debug_print, info_print
 from transformers import AutoTokenizer, AutoModel
 
+_embedding_model_cache = {}
+
+def get_sbert_encoder(model_name):
+    global _embedding_model_cache
+    if model_name not in _embedding_model_cache:
+        print(f"[INFO] Loading embedding model: {model_name} (this may take a moment...)")
+        _embedding_model_cache[model_name] = SBERT(model_name)
+        print(f"[INFO] Embedding model loaded successfully")
+    return _embedding_model_cache[model_name]
+
 def embedding_func(prompt, extra_param=None):
     encoder = SBERT('all-MiniLM-L6-v2')
     embedding = encoder.to_embeddings(prompt)
@@ -20,7 +30,7 @@ def custom_embedding_func(prompt, extra_param=None):
     config = get_config()
     model = config.sys['embedding_model']
     print(f"[DEBUG] using model {model}")
-    encoder = SBERT(model)
+    encoder = get_sbert_encoder(model)
     embedding = encoder.to_embeddings(prompt)
     return tuple(embedding)
 

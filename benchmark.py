@@ -19,7 +19,7 @@ from gptcache.manager import CacheBase, VectorBase, get_data_manager
 from gptcache.manager.eviction import EvictionBase
 from gptcache.similarity_evaluation import SbertCrossencoderEvaluation
 from components.dataset_manager import DatasetManager
-from components.cache_utils import embedding_func, custom_embedding_func, system_cleanup, lsh_temperature_func
+from components.cache_utils import embedding_func, custom_embedding_func, system_cleanup, lsh_temperature_func, get_sbert_encoder
 from components import custom_llm, new_cache_logger, cache_analyzer, lsh_based_estimator
 from components.helpers import info_print, debug_print, get_info_level, process_request
 
@@ -42,6 +42,10 @@ def main():
         info_print(f"Running benchmark with model: {model_name}", INFO)
 
         print(f'\033[1m\033[30m\033[44m[TEST] INFO={INFO}, DEBUG={DEBUG}\033[0m')
+
+        embedding_model = config.sys.get('embedding_model', 'all-MiniLM-L6-v2')
+        info_print(f"Pre-loading embedding model: {embedding_model}", INFO)
+        get_sbert_encoder(embedding_model)
 
         logging.basicConfig(
             level=config.logging['level'],
