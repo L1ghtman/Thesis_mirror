@@ -176,34 +176,36 @@ echo "Waiting for LLM server to load model (approximately 3-4 minutes)..."
 #    sys.exit(0)  # Don't fail the job, just warn
 #PYEOF
 
-MAX_WAIT=300
-WAIT_COUNT=0
+#MAX_WAIT=300
+#WAIT_COUNT=0
+#
+#while [ $WAIT_COUNT -lt $MAX_WAIT ]; do
+#    if curl -s --max-time 5 http://127.0.0.1:8080/health > /dev/null 2>&1; then
+#        echo "✓ Server health check passed after ${WAIT_COUNT}s"
+#        break
+#    fi
+#    if ! kill -0 $SERVER_PID 2> /dev/null; then
+#        echo "Error: Server process died during startup!"
+#    fi
+#    if [ $((WAIT_COUNT % 30)) -eq 0 ] && [ $WAIT_COUNT -gt 0 ]; then
+#        echo "Still waiting... (${WAIT_COUNT}s elapsed)"
+#    fi
+#    sleep 1
+#    WAIT_COUNT=$((WAIT_COUNT + 1))
+#done
+#
+#echo "Sending warmup inference request to initialize CUDA kernels..."
+#WARMUP_RESPONSE=$(curl -s --max-time 120 -X POST http://127.0.0.1:8080/completion \
+#    -H "Content-Type: application/json" \
+#    -d '{"prompt": "Hello", "n_predict": 10}')
+#if echo "$WARMUP_RESPONSE" | grep -q "content"; then
+#    echo "✓ Warmup request completed successfully"
+#else
+#    echo "⚠ Warmup response unexpected: $WARMUP_RESPONSE"
+#    echo "Continuing anyway..."
+#fi
 
-while [ $WAIT_COUNT -lt $MAX_WAIT ]; do
-    if curl -s --max-time 5 http://127.0.0.1:8080/health > /dev/null 2>&1; then
-        echo "✓ Server health check passed after ${WAIT_COUNT}s"
-        break
-    fi
-    if ! kill -0 $SERVER_PID 2> /dev/null; then
-        echo "Error: Server process died during startup!"
-    fi
-    if [ $((WAIT_COUNT % 30)) -eq 0 ] && [ $WAIT_COUNT -gt 0 ]; then
-        echo "Still waiting... (${WAIT_COUNT}s elapsed)"
-    fi
-    sleep 1
-    WAIT_COUNT=$((WAIT_COUNT + 1))
-done
-
-echo "Sending warmup inference request to initialize CUDA kernels..."
-WARMUP_RESPONSE=$(curl -s --max-time 120 -X POST http://127.0.0.1:8080/completion \
-    -H "Content-Type: application/json" \
-    -d '{"prompt": "Hello", "n_predict": 10}')
-if echo "$WARMUP_RESPONSE" | grep -q "content"; then
-    echo "✓ Warmup request completed successfully"
-else
-    echo "⚠ Warmup response unexpected: $WARMUP_RESPONSE"
-    echo "Continuing anyway..."
-fi
+python3 wait_for_server.py || exit 1
 
 echo "Server fully initialized."
 echo "Starting GPTCache experiment..."
