@@ -5,6 +5,7 @@ from langchain.callbacks.manager import CallbackManagerForLLMRun
 from langchain_core.language_models.llms import LLM
 from langchain_core.outputs import GenerationChunk
 from openai import OpenAI
+from config_manager import get_config
 
 
 class localLlama(LLM):
@@ -17,10 +18,13 @@ class localLlama(LLM):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+        config = get_config()
         # Initialize the client. We're using the OpenAI API here but redirecting to a local server.
         self.client = OpenAI(base_url="http://127.0.0.1:8080/v1", api_key="sk-xxx")
         #self.client = OpenAI(base_url="http://localhost:1337/v1", api_key="sk-xxx")
-        self.system_prompt = "You are a helpful AI assistant. Provide clear, accurate, and concise responses to user queries. Keep your answers factual and well-structured. Prioritize the most essential information and avoid unnecessary elaboration. Aim for responses under 150 words unless the question clearly requires more detail."
+        self.system_prompt = config.sys.get('prompt', self.system_prompt)
+        print(f'[DEBUG] system_prompt: {self.system_prompt}')
+
     @property
     def _llm_type(self) -> str:
         return "custom local"
@@ -34,8 +38,6 @@ class localLlama(LLM):
         """
         Make an API call to the model on the server using the specified prompt and return the response.
         """
-        #prompt, self.first_call = prompt_format(prompt, self.first_call)
-
         response = self.client.chat.completions.create(
             model="llama3",
             messages=[
@@ -55,19 +57,6 @@ class localLlama(LLM):
             presence_penalty=0.0,
             stop=stop,
         )
-
-        # Check different response structures and extract content
-#        if hasattr(response, 'model_extra') and 'content' in response.model_extra:
-#            result = response.model_extra["content"]
-#        elif hasattr(response, 'choices') and len(response.choices) > 0:
-#            if hasattr(response.choices[0], 'text'):
-#                result = response.choices[0].text
-#            elif hasattr(response.choices[0], 'message') and hasattr(response.choices[0].message, 'content'):
-#                result = response.choices[0].get('text', '')
-#            else:
-#                result = response.choices[0].get('text', '')
-#        else:
-#            result = str(response)
 
         result = response.choices[0].message.content
 

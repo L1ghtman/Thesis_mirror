@@ -4,7 +4,6 @@ import json
 from pathlib import Path
 from typing import Optional
 from deepeval.models import DeepEvalBaseLLM
-from components.custom_llm import localLlama
 from openai import OpenAI
 
 class LocalEvalLlama(DeepEvalBaseLLM):
@@ -30,7 +29,7 @@ class LocalEvalLlama(DeepEvalBaseLLM):
 
         return response.strip()
 
-    def generat(self, prompt: str) -> str:
+    def generate(self, prompt: str) -> str:
         client = self.load_model()
         needs_json = "json" in prompt.lower() or '"' in prompt or "{" in prompt
 
@@ -74,6 +73,9 @@ class LocalEvalLlama(DeepEvalBaseLLM):
         except Exception as e:
             raise RuntimeError(f"Error generatign respones: {e}")
     
+    async def a_generate(self, prompt: str) -> str:
+        return self.generate(prompt)
+
     def get_model_name(self):
         return self.model_name
     

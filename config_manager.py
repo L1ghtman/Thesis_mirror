@@ -9,6 +9,7 @@ from dataclasses import dataclass, asdict
 class SystemConfig:
     info_level: int
     model: str
+    system_prompt: str
     embedding_model: str
     hpc: bool
 
