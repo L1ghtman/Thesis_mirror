@@ -22,7 +22,7 @@ class localLlama(LLM):
         # Initialize the client. We're using the OpenAI API here but redirecting to a local server.
         self.client = OpenAI(base_url="http://127.0.0.1:8080/v1", api_key="sk-xxx")
         #self.client = OpenAI(base_url="http://localhost:1337/v1", api_key="sk-xxx")
-        self.system_prompt = config.sys.get('prompt', self.system_prompt)
+        self.system_prompt = config.sys.get('system_prompt', self.system_prompt)
         print(f'[DEBUG] system_prompt: {self.system_prompt}')
 
     @property
