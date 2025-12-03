@@ -14,6 +14,7 @@ class LocalEvalLlama(DeepEvalBaseLLM):
     def __init__(self):
         self.client = OpenAI(base_url="http://127.0.0.1:8080/v1", api_key="sk-xxx")
         self.model_name = "Local LLM" # TODO: implement options for selecting eval model
+        self.STATEMENTS_GRAMMAR = open("statements.gbnf").read()
 
     def load_model(self):
         return self.client
@@ -37,7 +38,13 @@ class LocalEvalLlama(DeepEvalBaseLLM):
             messages = [
                 {
                     "role": "system",
-                    "content": "You are a precise evaluator. Always respond with valid JSON only, no explanations."
+                    "content": (
+                        "You are a precise evaluator. "
+                        "You MUST output a valid JSON object with exactly one key named 'statements'. "
+                        "The value of 'statements' must be a list of strings. "
+                        "Do not use objects or other keys. "
+                        "Example: {\"statements\": [\"statement 1\", \"statement 2\"]}"
+                    )
                 },
                 {
                     "role": "user",
@@ -58,9 +65,11 @@ class LocalEvalLlama(DeepEvalBaseLLM):
                 messages=messages,
                 max_tokens=2000,
                 temperature=0.1,
+                #response_format={"type": "json_object"},
                 top_p=0.95,
                 frequency_penalty=0.0,
                 presence_penalty=0.0,
+                #extra_body={"grammar": self.STATEMENTS_GRAMMAR}
             )
 
             result = response.choices[0].message.content
