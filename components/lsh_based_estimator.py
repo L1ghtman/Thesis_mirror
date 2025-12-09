@@ -94,33 +94,16 @@ class LSHEstimator:
         # Update stats
         self._update_stats(bucket)
 
-        # Linear decay from 1.0 to a minimum over N requests
-        # decay_rate = 0.01  # Adjust this to control decay speed
-        # min_cache_factor = 0.3  # Minimum factor to maintain
-        # cache_factor = max(min_cache_factor, 1.0 - (self.total_count * decay_rate))
+        curve = self.config.experiment['curve']
 
-        # warmup_requests = 50  # Number of requests before decay starts
-        # decay_requests = 500  # Number of requests for full decay
-        # 
-        # if self.total_count < warmup_requests:
-        #     cache_factor = 1.0
-        # else:
-        #     progress = (self.total_count - warmup_requests) / decay_requests
-        #     cache_factor = max(0.3, 1.0 - (0.7 * min(1.0, progress)))
-        # 
-        # # Calculate temperature
-        # base_temp = 0.8
-        # #cache_factor = 1.0 / np.log2(self.total_count + 2)
-        # temperature = base_temp * (1 - density * 0.7) * cache_factor
-        # temperature = max(0.1, min(2.0, temperature))
-
-        # Exponential with sensitivity
-        #sensitivity = self.config.experiment['sensitivity']
-        #temperature = 2.0 * math.exp(-sensitivity * density)
-
-        # Rational with decay rate
-        decay_rate = self.config.experiment['decay_rate']
-        temperature = 2.0 / (1 + decay_rate * density)
+        if curve == "exponential":
+            # Exponential with sensitivity
+            sensitivity = self.config.experiment['sensitivity']
+            temperature = 2.0 * math.exp(-sensitivity * density)
+        else:
+            # Rational with decay rate
+            decay_rate = self.config.experiment['decay_rate']
+            temperature = 2.0 / (1 + decay_rate * density)
         
         # Track temperature for this bucket
         self.tracking_data['bucket_temperatures'][bucket].append(temperature)
