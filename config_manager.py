@@ -47,6 +47,7 @@ class ExperimentConfig:
     bucket_density_factor: float
     num_hyperplanes: int
     window_size: int
+    curve: str
     sensitivity: float
     decay_rate: float
 

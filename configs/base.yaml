@@ -26,15 +26,15 @@ experiment:
   name: "Experiment 1"
 
   # Logging
-  run_id: '006'
+  run_id: '0001'
 
   # Dataset configuration
   dataset_name: "quora"
   load_from_file: false
-  sample_size: 1000 # when using quora, sample_size is doubled due to question pairs
+  sample_size: 10 # when using quora, sample_size is doubled due to question pairs
   partial_questions: true
-  range_min: 0
-  range_max: 12
+  range_min: 4
+  range_max: 8
 
   # Cache configuration
   use_cache: true # This does not do anything currently
@@ -45,8 +45,9 @@ experiment:
 
   # LSH configuration
   use_LSH: true
-  bucket_density_factor: 0.7
-  num_hyperplanes: 8 # this defines the bucket size
+  bucket_density_factor: 1.0
+  num_hyperplanes: 16 # this defines the bucket size
   window_size: 1000
+  curve: "rational" # "exponential", "rational"
   sensitivity: 2.0
   decay_rate: 5.0

@@ -1207,12 +1207,6 @@ class CachePerformanceAnalyzer:
                             <h3><i class="fas fa-cubes"></i> Temperature Analysis</h3>
                             <img src="{}" alt="Temperature Analysis">
                         </div>
-
-                        <div class="plot-container">
-                            <h3><i class="fas fa-chart-bar"></i> Embedding Magnitude Distribution</h3>
-                            <p>Analysis of embedding L2 norms showing query complexity patterns and their relationship to cache performance.</p>
-                            <img src="{}" alt="Embedding Magnitude Distribution">
-                        </div>
                     </div>
                     <!-- LSH Algorithm Analysis -->
                     <div class="section">
@@ -1551,6 +1545,7 @@ class CachePerformanceAnalyzer:
                     cache_sizes = list(range(1, len(valid_temp_times) + 1))
                     
                     # Create scatter plot
+                    # TODO: Figure out if this is the right approach. Cache size seems to be calculated by the number of temp calc measurements which would be incorrect to say the least.
                     scatter = ax1.scatter(cache_sizes, valid_temp_times, alpha=0.6, s=30, c='purple')
                     
                     # Add trend line
