@@ -5,6 +5,18 @@ from pathlib import Path
 from typing import Optional
 from deepeval.models import DeepEvalBaseLLM
 from openai import OpenAI
+import torch
+from pydantic import BaseModel
+from transformers import (
+    AutoModelForCausalLM,
+    AutoTokenizer,
+    BitsAndBytesConfig,
+    pipeline,
+)
+from lmformatenforcer import JsonSchemaParser
+from lmformatenforcer.integrations.transformers import (
+    build_transformers_prefix_allowed_tokens_fn,
+)
 
 class LocalEvalLlama(DeepEvalBaseLLM):
     """
@@ -88,5 +100,44 @@ class LocalEvalLlama(DeepEvalBaseLLM):
     def get_model_name(self):
         return self.model_name
     
+class LocalEvalTransformer(DeepEvalBaseLLM):
+
+    #model_name = "Qwen/Qwen2.5-72B-Instruct"
+
+    def __init__(self):
+        self.model_name = "Qwen/Qwen2.5-7B-Instruct"
+        self.model = AutoModelForCausalLM.from_pretrained(
+            self.model_name,
+            device_map="auto",
+            quantization_config=BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_compute_dtype=torch.float16),
+            trust_remote_code=True
+        )
+        self.tokenizer = AutoTokenizer.from_pretrained(self.model_name, trust_remote_code=True)
+        self.pipe = pipeline("text-generation", model=self.model, tokenizer=self.tokenizer, max_new_tokens=2000, do_sample=False)
+
+    def load_model(self):
+        return self.model
+
+    def generate(self, prompt: str, schema: Optional[BaseModel] = None):
+        if schema:
+            parser = JsonSchemaParser(schema.model_json_schema())
+            prefix_fn = build_transformers_prefix_allowed_tokens_fn(self.tokenizer, parser)
+            output = self.pipe(prompt, prefix_allowed_tokens_fn=prefix_fn, return_full_text=False)
+        else:
+            output = self.pipe(prompt, return_full_text=False)
+        
+        result = output[0]["generated_text"]
+        return schema(**json.loads(result)) if schema else result
+
+    async def a_generate(self, prompt: str, schema: Optional[BaseModel] = None):
+        return self.generate(prompt, schema)
+
+    def get_model_name(self):
+        return self.model_name
+
+    
 def get_local_llama():
     return LocalEvalLlama()
+
+def get_local_transformer():
+    return LocalEvalTransformer()
