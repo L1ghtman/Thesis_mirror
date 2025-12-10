@@ -47,12 +47,6 @@ def main():
         info_print(f"Pre-loading embedding model: {embedding_model}", INFO)
         get_sbert_encoder(embedding_model)
 
-        logging.basicConfig(
-            level=config.logging['level'],
-            format=config.logging['format'],
-            stream=sys.stdout
-        )
-
         CACHE_DIR = config.cache['CACHE_DIR']
 
         if config.sys['hpc']:

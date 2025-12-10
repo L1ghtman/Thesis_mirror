@@ -18,9 +18,6 @@ class LLMLogger:
         self.log_file           = self._create_log_file()
         self.metrics            = {
             "start_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "llm_time": 0,
-            "llm_count": 0,
-            "average_llm_time": 0,
             "llm_response_times": [],
             "requests": [],
             "summary": {},
@@ -58,19 +55,22 @@ class LLMLogger:
         }
 
         self.metrics["requests"].append(reqeust_data)
+        self.metrics['llm_response_times'].append(response_time)
         self._save_metrics()
 
     def log_summary(self) -> Dict[str, Any]:
+        requests = self.metrics["requests"]
         response_times = self.metrics["llm_response_times"]
+        total_requests = len(requests)
         total_time = sum(response_times)
         avg_llm_time = total_time / len(response_times) if response_times else 0
 
         summary = {
-            "run_id": self.run_id,
+            "run_id": self.current_run_id,
             "model": self.model,
-            "total_requests": self.total_requests,
+            "total_requests": total_requests,
             "avg_llm_time": avg_llm_time,
-            "total_time": self.total_time
+            "total_time": total_time
         }
 
         self.metrics["summary"] = summary

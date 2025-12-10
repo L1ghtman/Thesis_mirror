@@ -76,6 +76,8 @@ def main():
             info_print(f"Answer: {answer}\n", INFO)
             info_print("\033[94m" + "-----------------------------------------------------------" + "\033[0m\n", INFO)
 
+        Logger.close()
+
     except Exception as e:
         logging.error(f"Error in main: {str(e)}")
         logging.error("Full traceback:")
