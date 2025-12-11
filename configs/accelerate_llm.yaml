@@ -1,11 +1,11 @@
 # System
 sys:
-  info_level: 3 # 0: no info, 1: INFO tags, 2: DEBUG tags, 3: INFO+DEBUG tags
+  info_level: 1 # 0: no info, 1: INFO tags, 2: DEBUG tags, 3: INFO+DEBUG tags
   model: "Llama-3.2-3B-Instruct-F16.gguf" # Llama-3.2-3B-Instruct-F16.gguf, gemma-2-2b-it-Q5_K_M.gguf, Llama-3.2-3B-Instruct-Q5_K_M.gguf, Meta-Llama-3.1-8B-Instruct-Q5_K_M.gguf, Mistral-7B-Instruct-v0.3-Q5_K_M.gguf, Qwen2.5-7B-Instruct-Q5_K_M.gguf, tinyllama-1.1b-chat-v1.0.Q5_K_M.gguf
   system_prompt: "You are a helpful AI assistant. Provide clear, accurate, and concise responses to user queries. Keep your answers factual and well-structured. Prioritize the most essential information and avoid unnecessary elaboration. Aim for responses under 150 words unless the question clearly requires more detail."
   embedding_model: "all-roberta-large-v1" # all-MiniLM-L6-v2 (6-layer, 384-dim), all-MiniLM-L12-v2 (12-layer, 768-dim), all-mpnet-base-v2 (12-layer, 768-dim), all-roberta-large-v1 (24-layer, 1024-dim)
   hpc: false
-  url: "http://127.0.0.1:8080/v1"
+  url: "http://localhost:1337/v1"
 
 # Logging
 logging:
@@ -27,15 +27,15 @@ experiment:
   name: "Experiment 1"
 
   # Logging
-  run_id: '0002'
+  run_id: '0003'
 
   # Dataset configuration
   dataset_name: "quora"
   load_from_file: false
-  sample_size: 10 # when using quora, sample_size is doubled due to question pairs
+  sample_size: 1000 # when using quora, sample_size is doubled due to question pairs
   partial_questions: true
-  range_min: 4
-  range_max: 8
+  range_min: 0
+  range_max: 2000
 
   # Cache configuration
   use_cache: true # This does not do anything currently
@@ -47,7 +47,7 @@ experiment:
   # LSH configuration
   use_LSH: true
   bucket_density_factor: 1.0
-  num_hyperplanes: 16 # this defines the bucket size
+  num_hyperplanes: 8 # this defines the bucket size
   window_size: 1000
   curve: "rational" # "exponential", "rational"
   sensitivity: 2.0

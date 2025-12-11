@@ -4,6 +4,7 @@ import time
 import logging
 import numpy as np
 from datetime import datetime
+from dataclasses import asdict
 from typing import Dict, Any, Optional, List, Union
 from config_manager import get_config
 from components.helpers import format_time, get_info_level, info_print, debug_print
@@ -15,8 +16,8 @@ class CacheLogger:
         self.INFO, self.DEBUG   = get_info_level(self.config)
         self.log_dir            = log_dir
         #self.current_run_id = self._get_next_run_id()
-        self.current_run_id     = self.config.experiment["run_id"]
-        self.model              = self.config.sys['model']
+        self.current_run_id     = self.config.experiment.run_id
+        self.model              = self.config.sys.model
         self.log_file           = self._create_log_file()
         self.metrics            = {
             "start_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -51,6 +52,7 @@ class CacheLogger:
             "average_llm_time": 0, 
             "average_save_time": 0, 
             "cache_hits": 0,
+            "cache_misses": 0,
             "cache_response_times": [],
             "llm_response_times": [],
             "clustering_times": [],
@@ -115,11 +117,13 @@ class CacheLogger:
 
         if used_cache:
             if is_cache_hit:
+                self.metrics["cache_hits"] += 1
                 self.metrics["cache_response_times"].append(response_time)
                 event_type = "CACHE_HIT"
                 # TODO: add positive/negative hit tracking
                 # Comment: This is not done with a few lines, would take online evaluation of request (complex task)
             else:
+                self.metrics["cache_misses"] += 1
                 self.metrics["llm_response_times"].append(response_time)
                 event_type = "CACHE_MISS"
         else:
@@ -171,15 +175,22 @@ class CacheLogger:
         avg_embedding_time = self.metrics["embedding_time"] / self.metrics["embedding_count"] if self.metrics["embedding_count"] else 0
         avg_search_time = self.metrics["search_time"] / self.metrics["search_count"] if self.metrics["search_count"] else 0
 
+        config_dict = {
+            "sys": asdict(self.config.sys),
+            "logging": asdict(self.config.logging),
+            "vector_store": asdict(self.config.vector_store),
+            "cache": asdict(self.config.cache),
+            "experiment": asdict(self.config.experiment),
+        }
+
         summary = {
             "run_id": self.current_run_id,
             "model": self.model,
             "total_requests": self.metrics["pre_process_count"],
             "cache_hits": self.metrics["cache_hits"],
-            "cache_misses": self.metrics["pre_process_count"] - self.metrics["cache_hits"],
+            "cache_misses": self.metrics["cache_misses"],
             "cache_hit_rate": cache_hit_rate,
-            "positive_hits": self.metrics["cache_hits"],
-            "negative_hits": 0,
+            "cache_hits": self.metrics["cache_hits"],
             "positive_hit_rate": cache_hit_rate,
             "llm_direct_calls": self.metrics["llm_direct_calls"],
             "avg_cache_time": avg_cache_time,
@@ -189,7 +200,8 @@ class CacheLogger:
             "avg_embedding_time": avg_embedding_time,
             "avg_search_time": avg_search_time,
             "total_time": format_time(total_time),
-            "time_saved": (avg_llm_time - avg_cache_time) * self.metrics["cache_hits"] if avg_llm_time and self.metrics["cache_hits"] else 0
+            "time_saved": (avg_llm_time - avg_cache_time) * self.metrics["cache_hits"] if avg_llm_time and self.metrics["cache_hits"] else 0,
+            "config": config_dict,
         }
 
         self.metrics["summary"] = summary

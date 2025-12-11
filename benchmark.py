@@ -37,44 +37,48 @@ def main():
         config = get_config()
         INFO, DEBUG = get_info_level(config)
 
-        model_name = config.sys['model']
+        #model_name = config.sys['model']
+        model_name = config.sys.model
         
         info_print(f"Running benchmark with model: {model_name}", INFO)
 
         print(f'\033[1m\033[30m\033[44m[TEST] INFO={INFO}, DEBUG={DEBUG}\033[0m')
 
-        embedding_model = config.sys.get('embedding_model', 'all-MiniLM-L6-v2')
+        #embedding_model = config.sys.get('embedding_model', 'all-MiniLM-L6-v2')
+        embedding_model = config.sys.embedding_model
         info_print(f"Pre-loading embedding model: {embedding_model}", INFO)
         get_sbert_encoder(embedding_model)
 
-        CACHE_DIR = config.cache['CACHE_DIR']
+        #CACHE_DIR = config.cache['CACHE_DIR']
+        CACHE_DIR = config.cache.CACHE_DIR
 
-        if config.sys['hpc']:
+        #if config.sys['hpc']:
+        if config.sys.hpc:
             job_id = os.environ.get('SLURM_JOB_ID', 'local')
             CACHE_DIR = f"persistent_cache_dir/{CACHE_DIR}_{job_id}"
         
         os.makedirs(CACHE_DIR, exist_ok=True)
 
         vector_store_params = {
-            "dimension": config.vector_store['dimension'],
-            "index_type": config.vector_store['index_type'],
-            "metric_type": config.vector_store['metric_type'],
+            "dimension": config.vector_store.dimension,
+            "index_type": config.vector_store.index_type,
+            "metric_type": config.vector_store.metric_type,
             "index_path": os.path.join(CACHE_DIR, "faiss.index"),
         }
 
         cache_base  = CacheBase("sqlite", sql_url=f"sqlite:///{os.path.join(CACHE_DIR, 'cache.db')}")
         vector_base = VectorBase("faiss", **vector_store_params)
 
-        max_cache_size  = config.experiment['max_cache_size']
-        cache_strategy  = config.experiment['cache_strategy']
-        eviction_policy = config.experiment['eviction_policy']
+        max_cache_size  = config.experiment.max_cache_size
+        cache_strategy  = config.experiment.cache_strategy
+        eviction_policy = config.experiment.eviction_policy
         
         data_manager = get_data_manager(cache_base, vector_base, max_size=max_cache_size, name=cache_strategy, eviction=eviction_policy)
 
         dataset_manager = DatasetManager()
-        dataset_name    = config.experiment['dataset_name']
-        load_from_file  = config.experiment['load_from_file']
-        sample_size     = config.experiment['sample_size']
+        dataset_name    = config.experiment.dataset_name
+        load_from_file  = config.experiment.load_from_file
+        sample_size     = config.experiment.sample_size
 
         if load_from_file:
             dataset_name = dataset_manager.load(
@@ -98,9 +102,9 @@ def main():
         questions = dataset_manager.get_questions(dataset_name=dataset_name)
 
         selected_questions = []
-        if config.experiment['partial_questions']:
-            min = config.experiment['range_min']
-            max = config.experiment['range_max']
+        if config.experiment.partial_questions:
+            min = config.experiment.range_min
+            max = config.experiment.range_max
             for q in questions[min:max]:
                 selected_questions.append(q)
         else:
@@ -133,6 +137,7 @@ def main():
                     semantic_cache,
                     CacheLogger,
                     #use_cache=use_cache,
+                    INFO
                 )
             CacheLogger.close()
             report_path = cache_analyzer.generate_latest_run_report(log_dir="cache_logs")

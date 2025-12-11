@@ -31,7 +31,7 @@ class CachePerformanceAnalyzer:
             output_dir: Directory where reports will be saved
         """
         self.config = get_config()
-        self.run_id = self.config.experiment["run_id"]
+        self.run_id = self.config.experiment.run_id
         self.log_dir = log_dir
         self.output_dir = output_dir
         
@@ -77,8 +77,7 @@ class CachePerformanceAnalyzer:
                     "requests": [],
                     "cache_hits": 0,
                     "cache_misses": 0,
-                    "positive_hits": 0,
-                    "negative_hits": 0,
+                    "cache_hits": 0,
                     "llm_direct_calls": 0
                 }
             
@@ -104,7 +103,7 @@ class CachePerformanceAnalyzer:
         # Ensure required fields exist
         required_fields = [
             "start_time", "total_requests", "cache_hits", "cache_misses",
-            "positive_hits", "negative_hits", "llm_direct_calls", "temperature", "temperature_times", "lsh_debug_info"
+            "cache_hits", "llm_direct_calls", "temperature", "temperature_times", "lsh_debug_info"
         ]
         
         for field in required_fields:
@@ -243,8 +242,7 @@ class CachePerformanceAnalyzer:
                 "total_requests": 0,
                 "cache_hits": 0,
                 "cache_misses": 0,
-                "positive_hits": 0,
-                "negative_hits": 0,
+                "cache_hits": 0,
                 "llm_direct_calls": 0,
                 "avg_cache_time": 0,
                 "avg_llm_time": 0,
@@ -263,8 +261,8 @@ class CachePerformanceAnalyzer:
             total_requests = len(df)
             cache_hits = len(df[df["cache_hit"] == True])
             cache_misses = len(df[df["cache_hit"] == False])
-            positive_hits = len(df[(df["cache_hit"] == True) & (df["positive_hit"] == True)])
-            negative_hits = len(df[(df["cache_hit"] == True) & (df["positive_hit"] == False)])
+            cache_hits = len(df[(df["cache_hit"] == True) & (df["positive_hit"] == True)])
+            #negative_hits = len(df[(df["cache_hit"] == True) & (df["positive_hit"] == False)])
             llm_direct_calls = len(df[df["used_cache"] == False])
 
             
@@ -282,18 +280,17 @@ class CachePerformanceAnalyzer:
             
             # Calculate rates
             cache_hit_rate = cache_hits / total_requests if total_requests > 0 else 0
-            positive_hit_rate = positive_hits / cache_hits if cache_hits > 0 else 0
+            positive_hit_rate = cache_hits / cache_hits if cache_hits > 0 else 0
             
             # Calculate time saved
-            time_saved = (avg_llm_time - avg_cache_time) * positive_hits if avg_llm_time and positive_hits else 0
+            time_saved = (avg_llm_time - avg_cache_time) * cache_hits if avg_llm_time and cache_hits else 0
             
             return {
                 "run_id": run_data.get("run_id", 1),
                 "total_requests": total_requests,
                 "cache_hits": cache_hits,
                 "cache_misses": cache_misses,
-                "positive_hits": positive_hits,
-                "negative_hits": negative_hits,
+                "cache_hits": cache_hits,
                 "llm_direct_calls": llm_direct_calls,
                 "avg_cache_time": avg_cache_time,
                 "avg_llm_time": avg_llm_time,
@@ -313,8 +310,7 @@ class CachePerformanceAnalyzer:
                 "total_requests": len(run_data.get("requests", [])),
                 "cache_hits": run_data.get("cache_hits", 0),
                 "cache_misses": run_data.get("cache_misses", 0),
-                "positive_hits": run_data.get("positive_hits", 0),
-                "negative_hits": run_data.get("negative_hits", 0),
+                "cache_hits": run_data.get("cache_hits", 0),
                 "llm_direct_calls": run_data.get("llm_direct_calls", 0),
                 "avg_cache_time": 0,
                 "avg_llm_time": 0,
@@ -340,13 +336,19 @@ class CachePerformanceAnalyzer:
             summary = self.generate_performance_summary(run_data)
             
             # Create data for the pie chart
-            labels = ['Positive Hits', 'Negative Hits', 'Cache Misses', 'Direct LLM Calls']
+            #labels = ['Positive Hits', 'Negative Hits', 'Cache Misses', 'Direct LLM Calls']
+            labels = ['Cache Hits', 'Cache Misses', 'Direct LLM Calls']
             sizes = [
-                summary["positive_hits"],
-                summary["negative_hits"],
+                summary["cache_hits"],
                 summary["cache_misses"],
                 summary["llm_direct_calls"]
             ]
+#            sizes = [
+#                summary["cache_hits"],
+#                summary["negative_hits"],
+#                summary["cache_misses"],
+#                summary["llm_direct_calls"]
+#            ]
             
             # Filter out zero values
             non_zero_indices = [i for i, size in enumerate(sizes) if size > 0]
@@ -367,7 +369,7 @@ class CachePerformanceAnalyzer:
             filtered_sizes = [sizes[i] for i in non_zero_indices]
             
             # Set colors
-            colors = ['#2ecc71', '#f39c12', '#e74c3c', '#3498db']
+            colors = ['#2ecc71', '#e74c3c', '#3498db']
             filtered_colors = [colors[i] for i in non_zero_indices]
             
             # Create the pie chart
@@ -786,7 +788,7 @@ class CachePerformanceAnalyzer:
             # Calculate performance stats for dashboard
             total_requests = summary["total_requests"]
             cache_hits = summary["cache_hits"]
-            positive_hits = summary["positive_hits"]
+            cache_hits = summary["cache_hits"]
             time_saved = summary["time_saved"]
             avg_cache_time = summary["avg_cache_time"]
             avg_llm_time = summary["avg_llm_time"]
@@ -1136,7 +1138,7 @@ class CachePerformanceAnalyzer:
                             <div class="metric-label">Time Saved</div>
                             <div class="metric-value success">{time_saved:.2f}s</div>
                             <div class="metric-context">
-                                From {positive_hits} positive cache hits
+                                From {cache_hits} positive cache hits
                             </div>
                         </div>
                     </div>
@@ -1147,13 +1149,8 @@ class CachePerformanceAnalyzer:
 
                         <div class="metrics-grid">
                             <div class="stat-item">
-                                <div class="stat-label">Positive Hits</div>
-                                <div class="stat-value success">{summary["positive_hits"]}</div>
-                            </div>
-
-                            <div class="stat-item">
-                                <div class="stat-label">Negative Hits</div>
-                                <div class="stat-value warning">{summary["negative_hits"]}</div>
+                                <div class="stat-label">Cache Hits</div>
+                                <div class="stat-value success">{summary["cache_hits"]}</div>
                             </div>
 
                             <div class="stat-item">
@@ -1871,11 +1868,9 @@ class CachePerformanceAnalyzer:
             cache_outcomes = []
             magnitude_values = []
             
-            # Define cache outcome categories based on your existing logic
             for idx, row in magnitude_df.iterrows():
                 magnitude = row['magnitude']
                 
-                # Use the same logic as your existing cache analysis
                 if pd.isna(row.get('used_cache')) or row.get('used_cache') == False:
                     category = 'Direct LLM'
                 elif row.get('cache_hit') == True:

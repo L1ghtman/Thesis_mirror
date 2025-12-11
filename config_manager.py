@@ -12,6 +12,7 @@ class SystemConfig:
     system_prompt: str
     embedding_model: str
     hpc: bool
+    url: str
 
 @dataclass
 class LoggingConfig:
@@ -62,7 +63,14 @@ class Config:
     @classmethod
     def from_yaml(cls, path: str):
         with open(path) as f:
-            return cls(**yaml.safe_load(f))
+            data = yaml.safe_load(f)
+        return cls(
+            sys=SystemConfig(**data['sys']),
+            logging=LoggingConfig(**data['logging']),
+            vector_store=VectorStoreConfig(**data['vector_store']),
+            cache=CacheConfig(**data['cache']),
+            experiment=ExperimentConfig(**data['experiment']),
+        )
         
 # global instance
 _config: Optional[Config] = None

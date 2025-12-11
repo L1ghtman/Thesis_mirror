@@ -18,6 +18,9 @@ class LSHEstimator:
         self.bucket_history = deque(maxlen=window_size)
         self.total_count = 0
         self.config = get_config()
+        self.bucket_density_factor = self.config.experiment.bucket_density_factor
+        self.sensitivity = self.config.experiment.sensitivity
+        self.decay_rate = self.config.experiment.decay_rate
         
         # Enhanced tracking components
         self.tracking_data = {
@@ -46,9 +49,9 @@ class LSHEstimator:
         INFO, DEBUG = get_info_level(self.config)
 
         info_print('--- LSHEstimator configuration ---', INFO)
-        info_print(f"bucket_density_factor:     {self.config.experiment['bucket_density_factor']}", INFO)
-        info_print(f"sensitivity:               {self.config.experiment['sensitivity']}", INFO)
-        info_print(f"decay_rate:                {self.config.experiment['decay_rate']}", INFO)
+        info_print(f"bucket_density_factor:     {self.bucket_density_factor}", INFO)
+        info_print(f"sensitivity:               {self.sensitivity}", INFO)
+        info_print(f"decay_rate:                {self.decay_rate}", INFO)
         info_print('----------------------------------', INFO)
         
     def get_lsh_bucket(self, embedding: np.ndarray) -> Tuple[str, float]:
@@ -85,7 +88,7 @@ class LSHEstimator:
         density_calc_time = time.time() - start_density_time
         self.performance_metrics['density_calculation_times'].append(density_calc_time)
         
-        density = bucket_density * self.config.experiment['bucket_density_factor']
+        density = bucket_density * self.bucket_density_factor
         
         # Update tracking before updating stats
         self._track_bucket_access(bucket, density, timestamp, embedding)
@@ -94,15 +97,15 @@ class LSHEstimator:
         # Update stats
         self._update_stats(bucket)
 
-        curve = self.config.experiment['curve']
+        curve = self.config.experiment.curve
 
         if curve == "exponential":
             # Exponential with sensitivity
-            sensitivity = self.config.experiment['sensitivity']
+            sensitivity = self.config.experiment.sensitivity
             temperature = 2.0 * math.exp(-sensitivity * density)
         else:
             # Rational with decay rate
-            decay_rate = self.config.experiment['decay_rate']
+            decay_rate = self.config.experiment.decay_rate
             temperature = 2.0 / (1 + decay_rate * density)
         
         # Track temperature for this bucket
@@ -263,20 +266,26 @@ class LSHEstimator:
 
 class LSHCache:
     def __init__(self):
+
         self.config = get_config()
-        self.estimator = LSHEstimator(self.config.vector_store['dimension'],
-                                      self.config.experiment['num_hyperplanes'], 
-                                      self.config.experiment['window_size'],
+        self.dimension = self.config.vector_store.dimension
+        self.use_LSH = self.config.experiment.use_LSH
+        self.num_hyperplanes = self.config.experiment.num_hyperplanes
+        self.window_size = self.config.experiment.window_size
+
+        self.estimator = LSHEstimator(self.dimension,
+                                      self.num_hyperplanes, 
+                                      self.window_size,
                                     )
         self.last_debug_info = None  # Store last debug info
 
         INFO, DEBUG = get_info_level(self.config)
 
         info_print('--- LSHCache configuration ---', INFO)
-        info_print(f"use_LSH:                   {self.config.experiment['use_LSH']}", INFO)
-        info_print(f"embedding dimension:       {self.config.vector_store['dimension']}", INFO)
-        info_print(f"num_hyperplanes:           {self.config.experiment['num_hyperplanes']}", INFO)
-        info_print(f"window size:               {self.config.experiment['window_size']}", INFO)
+        info_print(f"use_LSH:                   {self.use_LSH}", INFO)
+        info_print(f"embedding dimension:       {self.dimension}", INFO)
+        info_print(f"num_hyperplanes:           {self.num_hyperplanes}", INFO)
+        info_print(f"window size:               {self.window_size}", INFO)
         info_print('----------------------------------', INFO)
     
     def estimate_temperature(self, embedding: np.ndarray) -> Tuple[float, dict]:

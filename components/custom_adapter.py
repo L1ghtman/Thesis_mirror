@@ -101,7 +101,7 @@ def custom_adapt(llm_handler, cache_data_convert, update_cache_callback, *args, 
     except Exception as e:
         print(f"Error in temperature/clustering calculation: {e}")
 
-    if not config.experiment["use_temperature"]:
+    if not config.experiment.use_temperature:
         temperature = 0
         info_print(f"Temperature override! New value: {temperature}", INFO)
 
@@ -146,7 +146,7 @@ def custom_adapt(llm_handler, cache_data_convert, update_cache_callback, *args, 
 
     debug_print(f"Calculated cache skip: {cache_skip}", DEBUG)
     # For testing:
-    if not config.experiment["use_cache"]:
+    if not config.experiment.use_cache:
         cache_skip = True
         debug_print(f"Hard coded cache skip: {cache_skip}", DEBUG)
 
@@ -314,14 +314,14 @@ def custom_adapt(llm_handler, cache_data_convert, update_cache_callback, *args, 
                 resp["gptcache_meta"] = meta
             return resp
 
-    print("\n")
+    info_print("\n", INFO)
     debug_print(f"Context gathered this loop:", DEBUG)
     if len(chat_cache.last_context) == 0:
         debug_print("None, context is empty.\n", DEBUG)
     else:
         for key in chat_cache.last_context:
             debug_print(f"{key}: {chat_cache.last_context[key]}", DEBUG)
-        print("\n")
+        info_print("\n", INFO)
 
     next_cache = chat_cache.next_cache
     if next_cache:
@@ -340,6 +340,7 @@ def custom_adapt(llm_handler, cache_data_convert, update_cache_callback, *args, 
         if cache_skip:
             # cache skip
             # ---- Time the SKIP path (LLM call) ----
+            info_print("- - - This request used the LLM (SKIP path) - - -", INFO)
             _llm_start = time.time()
             llm_data = time_cal(
                 llm_handler, func_name="llm_request", report_func=chat_cache.report.llm_direct
@@ -347,6 +348,7 @@ def custom_adapt(llm_handler, cache_data_convert, update_cache_callback, *args, 
             _llm_elapsed = time.time() - _llm_start
         else:
             # ---- Time the MISS path (LLM call) ----
+            info_print("- - - This request used the LLM (MISS path) - - -", INFO)
             _llm_start = time.time()
             llm_data = time_cal(
                 llm_handler, func_name="llm_request", report_func=chat_cache.report.llm

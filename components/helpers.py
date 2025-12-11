@@ -73,20 +73,7 @@ def convert_gptcache_report(cache_obj):
     
     return full_metrics
 
-def track_request(question, response, start_time, is_cache_hit, similarity_score=None, used_cache=True, temperature=None):
-    request_data = {
-        "timestamp": datetime.now().isoformat(),
-        "query": question,
-        "response": response,
-        "event_type": "CACHE_HIT" if is_cache_hit else "CACHE_MISS",
-        "response_time": time.time() - start_time,
-        "similarity_score": similarity_score,
-        "used_cache": used_cache,
-        "temperature": temperature
-    }
-    return request_data
-
-def process_request(question, cached_llm, semantic_cache, CacheLogger):
+def process_request(question, cached_llm, semantic_cache, CacheLogger, INFO):
     """
     Send a request to the cache and log the response.
     
@@ -110,7 +97,7 @@ def process_request(question, cached_llm, semantic_cache, CacheLogger):
             last_bucket     = semantic_cache.lsh_cache.estimator.bucket_history[-1]
             last_lsh_debug  = {'last_bucket': last_bucket}
 
-    tracking_context = {}
+    #tracking_context = {}
 
     answer = cached_llm(prompt=question, cache_obj=semantic_cache)
     is_hit = semantic_cache.report.hint_cache_count > pre_stats["hits"]
@@ -121,19 +108,15 @@ def process_request(question, cached_llm, semantic_cache, CacheLogger):
     hamming_distance    = None
     used_cache          = None
 
-    # This just reads the values from the 'last_context'. If they are not updated in the next run, values form previous loops will appear in the current loop
-#    if hasattr(semantic_cache, 'last_context') and semantic_cache.last_context:
-#        temperature         = semantic_cache.last_context.get('temperature')
-#        similarity_score    = semantic_cache.last_context.get('similarity_score')       # This value seems to get carried over from loop to loop until a request hits the cache
-#        lsh_debug_info      = semantic_cache.last_context.get('lsh_debug_info')
-#        used_cache          = semantic_cache.last_context.get('used_cache')
-
     # This approach reads and removes the items from the last context. This way, the next loop will populate the context only from available data. Entries from previous runs don't get carried over.
     if hasattr(semantic_cache, 'last_context') and semantic_cache.last_context:
         temperature         = semantic_cache.last_context.pop('temperature', None)
         similarity_score    = semantic_cache.last_context.pop('similarity_score', None)
         lsh_debug_info      = semantic_cache.last_context.pop('lsh_debug_info', None)
         used_cache          = semantic_cache.last_context.pop('used_cache', None)
+
+    if used_cache:
+        info_print(" - - - This request used the cache - - -", INFO)
 
     # Calculate hamming distance if we have both current and last bucket
     if lsh_debug_info and last_lsh_debug and 'lsh_bucket' in lsh_debug_info and 'last_bucket' in last_lsh_debug:
@@ -157,15 +140,15 @@ def process_request(question, cached_llm, semantic_cache, CacheLogger):
         report_metrics      =report_metrics
     )
 
-    print(f"Question: {question}")
-    print("Time consuming: {:.2f}s".format(response_time))
-    print(f"Answer: {answer}\n")
-    info_print(f"Logged similarity score: {similarity_score}\n", True)
-    print("\033[94m" + "-----------------------------------------------------------" + "\033[0m\n")
+    #info_print(f"Question: {question}", INFO)
+    #info_print("Time consuming: {:.2f}s".format(response_time), INFO)
+    #info_print(f"Answer: {answer}\n", INFO)
+    #info_print(f"Logged similarity score: {similarity_score}\n", INFO)
+    info_print("\033[94m" + "-----------------------------------------------------------" + "\033[0m\n", INFO)
 
 
 def get_info_level(config: Config):
-    info_level = config.sys['info_level']
+    info_level = config.sys.info_level
     INFO = False
     DEBUG = False
     if info_level == 0:

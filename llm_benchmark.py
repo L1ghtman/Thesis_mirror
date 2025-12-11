@@ -27,9 +27,9 @@ def main():
         #os.makedirs(CACHE_DIR, exist_ok=True)
 
         dataset_manager = DatasetManager()
-        dataset_name    = config.experiment['dataset_name']
-        load_from_file  = config.experiment['load_from_file']
-        sample_size     = config.experiment['sample_size']
+        dataset_name    = config.experiment.dataset_name
+        load_from_file  = config.experiment.load_from_file
+        sample_size     = config.experiment.sample_size
 
         if load_from_file:
             dataset_name = dataset_manager.load(
@@ -48,9 +48,9 @@ def main():
         questions = dataset_manager.get_questions(dataset_name=dataset_name)
 
         selected_questions = []
-        if config.experiment['partial_questions']:
-            min = config.experiment['range_min']
-            max = config.experiment['range_max']
+        if config.experiment.partial_questions:
+            min = config.experiment.range_min
+            max = config.experiment.range_max
             for q in questions[min:max]:
                 selected_questions.append(q)
         else:
@@ -76,6 +76,7 @@ def main():
             info_print(f"Answer: {answer}\n", INFO)
             info_print("\033[94m" + "-----------------------------------------------------------" + "\033[0m\n", INFO)
 
+        debug_print(f"Finished questions, saving log summary...", DEBUG)
         Logger.close()
 
     except Exception as e:

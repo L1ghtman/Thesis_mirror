@@ -13,8 +13,8 @@ class LLMLogger:
         self.config             = get_config()
         self.INFO, self.DEBUG   = get_info_level(self.config)
         self.log_dir            = log_dir
-        self.current_run_id     = self.config.experiment["run_id"]
-        self.model              = self.config.sys["model"]
+        self.current_run_id     = self.config.experiment.run_id
+        self.model              = self.config.sys.model
         self.log_file           = self._create_log_file()
         self.metrics            = {
             "start_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
