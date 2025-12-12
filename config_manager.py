@@ -31,26 +31,26 @@ class CacheConfig:
 
 @dataclass
 class ExperimentConfig:
-    name: str
-    run_id: str
-    dataset_name: str
-    load_from_file: bool
-    sample_size: int
-    partial_questions: bool
-    range_min: int
-    range_max: int
-    use_cache: bool
-    use_temperature: bool
-    max_cache_size: int
-    cache_strategy: str
-    eviction_policy: str
-    use_LSH: bool
-    bucket_density_factor: float
-    num_hyperplanes: int
-    window_size: int
-    curve: str
-    sensitivity: float
-    decay_rate: float
+    name: str                       = ""
+    run_id: str                     = ""
+    dataset_name: str               = ""
+    load_from_file: bool            = False
+    sample_size: int                = 100
+    partial_questions: bool         = True
+    range_min: int                  = 0
+    range_max: int                  = 100
+    use_cache: bool                 = True
+    use_temperature: bool           = True
+    max_cache_size: int             = 1000
+    cache_strategy: str             = "memory"
+    eviction_policy: str            = "LFU"
+    use_LSH: bool                   = False
+    bucket_density_factor: float    = 1.0
+    num_hyperplanes: int            = 8
+    window_size: int                = 2000
+    curve: str                      = "rational"
+    sensitivity: float              = 2.0
+    decay_rate: float               = 5.0
 
 @dataclass
 class Config:
