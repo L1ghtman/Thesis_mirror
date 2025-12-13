@@ -1,0 +1,30 @@
+{
+  "cache": {
+    "capacity": 2,
+    "num_of_quanta": 16,
+    "num_of_blocks": 3,
+    "sample_rate": 4,
+    "decision_window_multiplier": 10,
+    "aging_window_multiplier": 10,
+    "seed" : 42,
+    "sample_size" : 16
+  },
+  "count_min_sketch": {
+    "error": 0.01,
+    "probability": 0.99
+  },
+  "blocks": [
+    {
+      "type" : "fifo",
+      "initial_quanta": 5
+    },
+    {
+      "type" : "alru",
+      "initial_quanta": 5
+    },
+    {
+       "type" : "cost_aware_lfu",
+      "initial_quanta": 6
+    }
+  ]
+}
