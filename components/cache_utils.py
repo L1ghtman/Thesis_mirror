@@ -131,12 +131,6 @@ def temperature_func(clusterer, embedding_data, cache_size, temperature):
     else:
         return temperature
 
-def magnitude_temperature_func(magnitude_cache, embedding):
-    """
-    Calculate the temperature based on embedding magnitude.
-    """
-    return magnitude_cache.get_temperature(embedding) 
-
 def lsh_temperature_func(lsh_cache, embedding):
     """
     Calculate the temperature based on LSH bucket density.

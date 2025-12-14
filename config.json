@@ -1,6 +1,6 @@
 {
   "cache": {
-    "capacity": 2,
+    "capacity": 128,
     "num_of_quanta": 16,
     "num_of_blocks": 3,
     "sample_rate": 4,

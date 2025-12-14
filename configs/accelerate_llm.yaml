@@ -27,7 +27,7 @@ experiment:
   name: "Experiment 1"
 
   # Logging
-  run_id: '0003'
+  run_id: '0004'
 
   # Dataset configuration
   dataset_name: "quora"

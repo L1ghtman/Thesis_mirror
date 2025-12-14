@@ -68,8 +68,7 @@ class LSHEstimator:
         Estimate topic density using LSH with comprehensive tracking
         Returns: (temperature, debug_info)
         """
-        # TODO: Is this really needed?
-        # Comment: It is nice to have an extra instance to measure just the compute time:)
+
         timestamp = datetime.now()
         
         # Get bucket
