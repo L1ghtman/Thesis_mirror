@@ -17,11 +17,19 @@ warnings.filterwarnings('ignore')
 def run_metric(metric, test_case, metric_name):
     try:
         metric.measure(test_case)
+        score = metric.score
+        success = metric.is_successful()
+        reason = metric.reason
         print(f"\n{metric_name}")
-        print(f"    Score: {metric.score:.2f}")
-        print(f"    Passed: {'✓' if metric.is_successful() else '✗'}")
-        print(f"    Reason: {metric.reason[:150]}...")
-        return True
+        print(f"    Score: {score:.2f}")
+        print(f"    Passed: {'✓' if success else '✗'}")
+        print(f"    Reason: {reason[:150]}...")
+        data = {
+            "score": score,
+            "success": success,
+            "reason": reason
+        }
+        return True, data
     except Exception as e:
         error_msg = str(e)
         print(f"\n{metric_name}: ✗ Error")
@@ -37,9 +45,13 @@ def run_metric(metric, test_case, metric_name):
             print(f"  Tip: This metric requires 'context' or 'retrieval_context' in test case")
         else:
             print(f"  Issue: {error_msg[:200]}")
-        return False
+        data = {
+            "error": error_msg
+        }
+        return False, data
 
 def run_relevancy_metric(model, run_data):
+    eval_data = []
     metric = AnswerRelevancyMetric(
         model=model,
         threshold=0.8,
@@ -50,24 +62,35 @@ def run_relevancy_metric(model, run_data):
             input=item.query,
             actual_output=item.response
         )
-        success = run_metric(metric, test_case, 'AnswerRelevancy')
+        success, data = run_metric(metric, test_case, 'AnswerRelevancy')
         if success:
             print("\n✓ Evaluation successful!")
         else:
             print("\n✗ Evaluation failed - see tips above")
+        eval_data.append(data)
+    return eval_data
+
+def save_data(eval_data, run_id):
+    with open(f"eval/{run_id}_eval.json", 'w') as file:
+        file.write(eval_data)
+    file.close()
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--run', type=str, required=True, help='Path to the file containing the run data to be analyzsed.')
     args = parser.parse_args()
 
+    # cache_run_003.json
     file = args.run 
+    run_id = file.split('_')[3].split('.')[0]
+    print(f"[DEBUG] run_id: {run_id}")
     run_data = utils.ingest_data(file) 
     try:
         model = get_local_transformer()
         #model = get_local_llama()
         #model = get_robust_local_llama()
-        run_relevancy_metric(model, run_data)
+        eval_data = run_relevancy_metric(model, run_data)
+        save_data(eval_data, run_id)
     except KeyboardInterrupt:
         print("\n\nInterrupted by user")
     except Exception as e:

@@ -124,6 +124,7 @@ class LocalEvalTransformer(DeepEvalBaseLLM):
             prefix_fn = build_transformers_prefix_allowed_tokens_fn(self.tokenizer, parser)
             output = self.pipe(prompt, prefix_allowed_tokens_fn=prefix_fn, return_full_text=False)
         else:
+            print("[DEBUG] no schema")
             output = self.pipe(prompt, return_full_text=False)
         
         result = output[0]["generated_text"]
