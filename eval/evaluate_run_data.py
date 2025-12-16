@@ -10,13 +10,16 @@ from custom_llm import get_local_llama, get_local_transformer
 from custom_llm_improved import get_robust_local_llama
 import os
 import warnings
+import time
 
 os.environ['DEEPEVAL_TELEMETRY_OPT_OUT'] = 'YES'
 warnings.filterwarnings('ignore')
 
 def run_metric(metric, test_case, metric_name):
     try:
+        start_time = time.now()
         metric.measure(test_case)
+        end_time = time.now()
         score = metric.score
         success = metric.is_successful()
         reason = metric.reason
@@ -27,7 +30,8 @@ def run_metric(metric, test_case, metric_name):
         data = {
             "score": score,
             "success": success,
-            "reason": reason
+            "reason": reason,
+            "time" : end_time - start_time
         }
         return True, data
     except Exception as e:
@@ -46,7 +50,8 @@ def run_metric(metric, test_case, metric_name):
         else:
             print(f"  Issue: {error_msg[:200]}")
         data = {
-            "error": error_msg
+            "error": error_msg,
+            "time" : end_time - start_time
         }
         return False, data
 
