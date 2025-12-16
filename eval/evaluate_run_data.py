@@ -76,8 +76,7 @@ def run_relevancy_metric(model, run_data):
 
 def save_data(eval_data, run_id):
     with open(f"eval/{run_id}_eval.json", 'w') as file:
-        file.write(eval_data)
-    file.close()
+        json.dump(eval_data, file, indent=2)
 
 def main():
     parser = argparse.ArgumentParser()
