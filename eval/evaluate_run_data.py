@@ -7,7 +7,6 @@ from deepeval.metrics import AnswerRelevancyMetric, FaithfulnessMetric
 import utils
 import argparse
 from custom_llm import get_local_llama, get_local_transformer
-from custom_llm_improved import get_robust_local_llama
 import os
 import warnings
 import time
