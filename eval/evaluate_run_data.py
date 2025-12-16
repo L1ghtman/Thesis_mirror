@@ -16,9 +16,9 @@ warnings.filterwarnings('ignore')
 
 def run_metric(metric, test_case, metric_name):
     try:
-        start_time = time.now()
+        start_time = time.time()
         metric.measure(test_case)
-        end_time = time.now()
+        end_time = time.time()
         score = metric.score
         success = metric.is_successful()
         reason = metric.reason
