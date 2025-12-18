@@ -2,7 +2,7 @@ import json
 import time
 import math
 import numpy as np
-from typing import Tuple, List, Dict, Any
+from typing import Tuple, List, Dict, Any, Set
 from datetime import datetime
 from collections import defaultdict, deque
 from config_manager import get_config
@@ -45,6 +45,11 @@ class LSHEstimator:
             'bucket_reuse_rate': 0,
             'average_bucket_lifetime': 0,
         }
+        
+        # Item-to-bucket tracking for eviction synchronization
+        self.item_to_bucket: Dict[int, str] = {}  # item_id → bucket_id
+        self.bucket_to_items: Dict[str, Set[int]] = defaultdict(set)  # bucket_id → {item_ids}
+        self.active_item_count = 0  # Track items that haven't been evicted
 
         INFO, DEBUG = get_info_level(self.config)
 
@@ -197,6 +202,95 @@ class LSHEstimator:
         # Update performance metrics
         self.performance_metrics['bucket_reuse_rate'] = self._calculate_bucket_reuse_rate()
     
+    def register_item(self, item_id: int, embedding: np.ndarray) -> str:
+        """
+        Register a cache item with its LSH bucket.
+        Called when a new item is added to the cache.
+        
+        Args:
+            item_id: The unique ID of the cached item (from scalar storage)
+            embedding: The embedding vector for this item
+            
+        Returns:
+            The bucket ID this item was assigned to
+        """
+        # TODO try to fix this to avoid calculating buckets more than once
+        bucket, _ = self.get_lsh_bucket(embedding)
+
+        print("Item registered!")
+        
+        # Store bidirectional mapping
+        self.item_to_bucket[item_id] = bucket
+        self.bucket_to_items[bucket].add(item_id)
+        self.active_item_count += 1
+        
+        return bucket
+    
+    def evict_item(self, item_id: int) -> bool:
+        """
+        Handle eviction of a cache item - decrement bucket count.
+        Called when an item is evicted from the cache.
+        
+        Args:
+            item_id: The unique ID of the evicted item
+            
+        Returns:
+            True if item was found and evicted, False otherwise
+        """
+        bucket = self.item_to_bucket.get(item_id)
+        
+        print("evicting item")
+
+        if bucket is None:
+            print("fail")
+            # Item wasn't registered (might be from before LSH tracking)
+            return False
+        
+        # Decrement bucket count
+        if self.bucket_counts[bucket] > 0:
+            self.bucket_counts[bucket] -= 1
+        
+        # Update total count
+        if self.total_count > 0:
+            self.total_count -= 1
+        
+        # Remove from tracking structures
+        self.bucket_to_items[bucket].discard(item_id)
+        del self.item_to_bucket[item_id]
+        self.active_item_count -= 1
+        
+        # Clean up empty bucket sets
+        if len(self.bucket_to_items[bucket]) == 0:
+            del self.bucket_to_items[bucket]
+        
+        print("success")
+        return True
+    
+    def evict_items(self, item_ids: List[int]) -> int:
+        """
+        Batch evict multiple items.
+        
+        Args:
+            item_ids: List of item IDs to evict
+            
+        Returns:
+            Number of items successfully evicted
+        """
+        evicted_count = 0
+        for item_id in item_ids:
+            if self.evict_item(item_id):
+                evicted_count += 1
+        return evicted_count
+    
+    def get_active_bucket_stats(self) -> Dict[str, Any]:
+        """Get statistics about active (non-evicted) items per bucket."""
+        return {
+            'total_active_items': self.active_item_count,
+            'total_tracked_items': len(self.item_to_bucket),
+            'buckets_with_active_items': len(self.bucket_to_items),
+            'items_per_bucket': {b: len(items) for b, items in self.bucket_to_items.items()},
+        }
+    
     def save_tracking_data(self, filepath: str):
         """Save tracking data to JSON file for analysis"""
         export_data = {
@@ -299,3 +393,19 @@ class LSHCache:
     def get_last_debug_info(self) -> dict:
         """Get the last debug info for logging"""
         return self.last_debug_info
+    
+    def register_item(self, item_id: int, embedding: np.ndarray) -> str:
+        """Register a cached item with its LSH bucket."""
+        return self.estimator.register_item(item_id, embedding)
+    
+    def evict_item(self, item_id: int) -> bool:
+        """Handle eviction of a single item."""
+        return self.estimator.evict_item(item_id)
+    
+    def evict_items(self, item_ids: List[int]) -> int:
+        """Handle batch eviction of items."""
+        return self.estimator.evict_items(item_ids)
+    
+    def get_active_stats(self) -> Dict[str, Any]:
+        """Get active item statistics."""
+        return self.estimator.get_active_bucket_stats()

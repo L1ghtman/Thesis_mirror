@@ -145,6 +145,7 @@ def get_data_manager(
         data_path: str = "data_map.txt",
         name: str = "memory",
         get_data_container: Callable = None,
+        lsh_cache=None,
 ):
     """Generate `SSDataManager` (with `cache_base`, `vector_base`, `max_size`, `clean_size` and `eviction` params),
        or `MAPDataManager` (with `data_path`, `max_size` and `get_data_container` params) to manager the data.
@@ -207,4 +208,4 @@ def get_data_manager(
     if isinstance(eviction_base, str) and eviction_base != "memory":
         eviction_base = EvictionBase(name=eviction_base)
     assert cache_base and vector_base
-    return SSDataManager(cache_base, vector_base, object_base, eviction_base, max_size, clean_size, eviction, name)
+    return SSDataManager(cache_base, vector_base, object_base, eviction_base, max_size, clean_size, eviction, name, lsh_cache)

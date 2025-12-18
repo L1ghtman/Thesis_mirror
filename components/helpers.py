@@ -115,9 +115,6 @@ def process_request(question, cached_llm, semantic_cache, CacheLogger, INFO):
         lsh_debug_info      = semantic_cache.last_context.pop('lsh_debug_info', None)
         used_cache          = semantic_cache.last_context.pop('used_cache', None)
 
-    if used_cache:
-        info_print(" - - - This request used the cache - - -", INFO)
-
     # Calculate hamming distance if we have both current and last bucket
     if lsh_debug_info and last_lsh_debug and 'lsh_bucket' in lsh_debug_info and 'last_bucket' in last_lsh_debug:
         current_bucket      = lsh_debug_info['lsh_bucket']

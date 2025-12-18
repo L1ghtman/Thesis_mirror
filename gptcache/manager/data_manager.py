@@ -243,10 +243,12 @@ class SSDataManager(DataManager):
         clean_size,
         policy="LRU",
         name="memory",
+        lsh_cache=None,
     ):
         self.s = s
         self.v = v
         self.o = o
+        self.lsh_cache = lsh_cache  # LSH cache for eviction synchronization
         self.eviction_manager = EvictionManager(self.s, self.v)
         if e is None:
             e = EvictionBase(# original
@@ -277,6 +279,12 @@ class SSDataManager(DataManager):
 
     def _clear(self, marked_keys):
         print("[DEBUG] used _clear() <-------")
+        
+        # Notify LSH about evicted items BEFORE clearing
+        if self.lsh_cache is not None:
+            evicted = self.lsh_cache.evict_items(marked_keys)
+            print(f"[DEBUG] LSH evicted {evicted}/{len(marked_keys)} items")
+        
         self.eviction_manager.soft_evict(marked_keys)
         if self.eviction_manager.check_evict():
             self.eviction_manager.delete()
@@ -366,6 +374,11 @@ class SSDataManager(DataManager):
             ]
         )
         self.eviction_base.put([(ids[0], (answers[0].latency, answers[0].length))])
+        
+        # Register items with LSH for eviction tracking
+        if self.lsh_cache is not None:
+            for i, item_id in enumerate(ids):
+                self.lsh_cache.register_item(item_id, embedding_datas[i])
 
     def get_scalar_data(self, res_data, **kwargs) -> Optional[CacheData]:
         session = kwargs.get("session", None)

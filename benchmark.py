@@ -73,7 +73,10 @@ def main():
         cache_strategy  = config.experiment.cache_strategy
         eviction_policy = config.experiment.eviction_policy
         
-        data_manager = get_data_manager(cache_base, vector_base, max_size=max_cache_size, name=cache_strategy, eviction=eviction_policy)
+        # Create LSH cache first so it can be passed to data_manager
+        LSHCache = lsh_based_estimator.LSHCache()
+        
+        data_manager = get_data_manager(cache_base, vector_base, max_size=max_cache_size, name=cache_strategy, eviction=eviction_policy, lsh_cache=LSHCache)
 
         dataset_manager = DatasetManager()
         dataset_name    = config.experiment.dataset_name
@@ -112,7 +115,6 @@ def main():
                 selected_questions.append(q)
 
         CacheLogger = new_cache_logger.CacheLogger()
-        LSHCache = lsh_based_estimator.LSHCache()
         llm = custom_llm.localLlama()
         cached_llm = LangChainLLMs(llm=llm)
         semantic_cache = Cache()

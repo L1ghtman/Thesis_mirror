@@ -6,6 +6,11 @@ from gptcache.manager.eviction.base import EvictionBase
 from adaptive_pipeline import AdaptivePipelineCache
 
 
+# Sentinel value returned by AdaptivePipelineCache.popitem() when queue is empty
+# The C++ code returns: std::make_pair(0, std::make_tuple(0, std::numeric_limits<uint64_t>::max()))
+AP_POPITEM_SENTINEL_TOKENS = 18446744073709551615  # uint64_t max
+
+
 def popitem_wrapper(func, wrapper_func, clean_size):
     def wrapper(*args, **kwargs):
         keys = []
@@ -43,6 +48,7 @@ class MemoryCacheEviction(EvictionBase):
             **kwargs,
     ):
         self._policy = policy.upper()
+        self._on_evict = on_evict  # Store callback for AP policy
 
         print(f"--- Policy set to '{self._policy}' ---")
 
@@ -54,7 +60,7 @@ class MemoryCacheEviction(EvictionBase):
             self._cache = cachetools.FIFOCache(maxsize=maxsize, **kwargs)
         elif self._policy == "RR":
             self._cache = cachetools.RRCache(maxsize=maxsize, **kwargs)
-        elif self._policy =="AP":
+        elif self._policy == "AP":
             config_path = 'config.json'
             self._cache = AdaptivePipelineCache(config_path=config_path)
         else:
@@ -63,12 +69,39 @@ class MemoryCacheEviction(EvictionBase):
 #        if not on_evict:
 #            self.eviction_manager = EvictionManager()
 
-        self._cache.popitem = popitem_wrapper(self._cache.popitem, on_evict, clean_size)
+        # For non-AP policies, wrap popitem to trigger eviction callback
+        # For AP policy, we handle eviction differently in put()
+        if self._policy != "AP":
+            self._cache.popitem = popitem_wrapper(self._cache.popitem, on_evict, clean_size)
+
+    def _drain_ap_eviction_queue(self) -> List[int]:
+        """
+        Drain the AdaptivePipelineCache eviction queue after insert operations.
+        Returns list of evicted item keys.
+        
+        The C++ insert_item() pushes evicted items to an internal queue.
+        popitem() returns them one by one until the queue is empty,
+        at which point it returns a sentinel value with tokens = uint64_max.
+        """
+        evicted_keys = []
+        while True:
+            key, (latency, tokens) = self._cache.popitem()
+            # Check for sentinel value indicating empty queue
+            if tokens == AP_POPITEM_SENTINEL_TOKENS:
+                break
+            evicted_keys.append(key)
+        return evicted_keys
 
     def put(self, objs: List[Tuple[int, Tuple[float, int]]]):
         for obj in objs:
             if isinstance(obj, tuple):
                 self._cache[obj[0]] = obj[1]
+        
+        # For AP policy, drain eviction queue and call callback
+        if self._policy == "AP":
+            evicted_keys = self._drain_ap_eviction_queue()
+            if evicted_keys and self._on_evict is not None:
+                self._on_evict(evicted_keys)
 
     def get(self, obj: Any):
         return self._cache.get(obj)

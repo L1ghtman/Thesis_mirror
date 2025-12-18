@@ -295,6 +295,8 @@ def custom_adapt(llm_handler, cache_data_convert, update_cache_callback, *args, 
                 )
             #return cache_data_convert(return_message)
 
+            print("[DEBUG] CACHE HIT")
+
             # ---- Add meta to HIT response ----
             resp = cache_data_convert(return_message)
             _total_elapsed = time.time() - start_time
@@ -324,6 +326,7 @@ def custom_adapt(llm_handler, cache_data_convert, update_cache_callback, *args, 
         kwargs["cache_skip"] = cache_skip
         kwargs["cache_factor"] = cache_factor
         kwargs["search_only"] = search_only_flag
+        print("[DEBUG] CACHE HIT")
         llm_data = custom_adapt(
             llm_handler, cache_data_convert, update_cache_callback, *args, **kwargs
         )
@@ -335,6 +338,7 @@ def custom_adapt(llm_handler, cache_data_convert, update_cache_callback, *args, 
             # cache skip
             # ---- Time the SKIP path (LLM call) ----
             #info_print("- - - This request used the LLM (SKIP path) - - -", INFO)
+            print("[DEBUG] CACHE SKIP")
             _llm_start = time.time()
             llm_data = time_cal(
                 llm_handler, func_name="llm_request", report_func=chat_cache.report.llm_direct
@@ -343,6 +347,7 @@ def custom_adapt(llm_handler, cache_data_convert, update_cache_callback, *args, 
         else:
             # ---- Time the MISS path (LLM call) ----
             #info_print("- - - This request used the LLM (MISS path) - - -", INFO)
+            print("[DEBUG] CACHE MISS")
             _llm_start = time.time()
             llm_data = time_cal(
                 llm_handler, func_name="llm_request", report_func=chat_cache.report.llm
