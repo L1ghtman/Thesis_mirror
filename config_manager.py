@@ -13,6 +13,7 @@ class SystemConfig:
     embedding_model: str
     hpc: bool
     url: str
+    temperature: float              = 0.1
 
 @dataclass
 class LoggingConfig:

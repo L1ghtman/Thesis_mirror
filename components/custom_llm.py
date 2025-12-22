@@ -20,6 +20,7 @@ class localLlama(LLM):
 
         config = get_config()
         url = config.sys.url
+        self.temperature = config.sys.temperature
 
         # Initialize the client. We're using the OpenAI API here but redirecting to a local server.
         self.client = OpenAI(base_url=url, api_key="sk-xxx")
@@ -52,7 +53,7 @@ class localLlama(LLM):
                 }
             ],
             max_tokens=1000,
-            temperature=0.7,
+            temperature=self.temperature
             top_p=1,
             frequency_penalty=0.0,
             presence_penalty=0.0,
