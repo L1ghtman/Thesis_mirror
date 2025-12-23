@@ -64,12 +64,15 @@ class LLMLogger:
         total_requests = len(requests)
         total_time = sum(response_times)
         avg_llm_time = total_time / len(response_times) if response_times else 0
+        response_times.sort()
+        median_llm_time = sum(response_times[(response_times//2)-1:(response_times//2)+1])/2
 
         summary = {
             "run_id": self.current_run_id,
             "model": self.model,
             "total_requests": total_requests,
             "avg_llm_time": avg_llm_time,
+            "median_llm_time": median_llm_time,
             "total_time": total_time
         }
 
