@@ -179,6 +179,10 @@ class DatasetManager:
         Returns:
             Name of the loaded dataset"""
         
+        # Handle string 'None' from YAML config
+        if max_samples == "None" or max_samples == "none":
+            max_samples = None
+        
         dataset_name = f"quora_question_pairs_{split}"
         
         try:
@@ -528,6 +532,82 @@ class DatasetManager:
                     value = value[:100] + "..."
                 print(f"  {key}: {value}")
                 
+    def analyze_dataset_balance(self, dataset_name: Optional[str] = None,
+                                  range_min: int = 0, range_max: Optional[int] = None) -> Dict[str, Any]:
+        """
+        Analyze the balance of is_duplicate labels in a dataset sample.
+        
+        Args:
+            dataset_name: Name of the dataset (uses active dataset if None)
+            range_min: Start index of the range to analyze
+            range_max: End index of the range to analyze (None for end of dataset)
+            
+        Returns:
+            Dictionary with balance statistics including counts and percentages
+        """
+        # Use active dataset if none specified
+        if dataset_name is None:
+            if self.active_dataset is None:
+                raise ValueError("No active dataset. Use set_active_dataset() first.")
+            dataset = self.active_dataset
+            dataset_info = self.datasets[self.active_dataset_name]
+        else:
+            if dataset_name not in self.datasets:
+                raise ValueError(f"Dataset '{dataset_name}' not found")
+            dataset = self.datasets[dataset_name]["data"]
+            dataset_info = self.datasets[dataset_name]
+        
+        # Check if dataset has is_duplicate field
+        if 'is_duplicate' not in dataset.features:
+            info_print(f"Dataset '{dataset_name}' does not have 'is_duplicate' field. Skipping balance analysis.", self.INFO)
+            return None
+        
+        # Set range bounds
+        total_size = len(dataset)
+        if range_max is None or range_max > total_size:
+            range_max = total_size
+        if range_min < 0:
+            range_min = 0
+        if range_min >= range_max:
+            raise ValueError(f"Invalid range: range_min ({range_min}) must be less than range_max ({range_max})")
+        
+        # Count duplicates and non-duplicates in the specified range
+        duplicates = 0
+        non_duplicates = 0
+        
+        for i in range(range_min, range_max):
+            if dataset[i]['is_duplicate'] == 1:
+                duplicates += 1
+            else:
+                non_duplicates += 1
+        
+        sample_size = range_max - range_min
+        duplicate_pct = (duplicates / sample_size) * 100 if sample_size > 0 else 0
+        non_duplicate_pct = (non_duplicates / sample_size) * 100 if sample_size > 0 else 0
+        
+        result = {
+            "range_min": range_min,
+            "range_max": range_max,
+            "sample_size": sample_size,
+            "duplicates": duplicates,
+            "non_duplicates": non_duplicates,
+            "duplicate_percentage": duplicate_pct,
+            "non_duplicate_percentage": non_duplicate_pct,
+            "balance_ratio": duplicates / non_duplicates if non_duplicates > 0 else float('inf')
+        }
+        
+        # Print summary
+        info_print(f"\n{'='*50}", self.INFO)
+        info_print(f"Dataset Balance Analysis (range: {range_min} to {range_max})", self.INFO)
+        info_print(f"{'='*50}", self.INFO)
+        info_print(f"Sample size:      {sample_size}", self.INFO)
+        info_print(f"Duplicates:       {duplicates} ({duplicate_pct:.2f}%)", self.INFO)
+        info_print(f"Non-duplicates:   {non_duplicates} ({non_duplicate_pct:.2f}%)", self.INFO)
+        info_print(f"Balance ratio:    {result['balance_ratio']:.4f} (duplicates/non-duplicates)", self.INFO)
+        info_print(f"{'='*50}\n", self.INFO)
+        
+        return result
+
     def sample_questions(self, dataset_name: Optional[str] = None, 
                          count: int = 5, seed: Optional[int] = None) -> List[str]:
         """
