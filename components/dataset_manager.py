@@ -43,6 +43,7 @@ class DatasetManager:
             Name of the loaded dataset
         """
         dataset_name = f"msmarco_{split}"
+        split = self.config.experiment.dataset_split
         
         try:
             # Load the dataset

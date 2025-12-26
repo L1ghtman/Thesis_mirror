@@ -6,7 +6,7 @@ sys:
   system_prompt: "You are a helpful AI assistant. Provide clear, accurate, and concise responses to user queries. Keep your answers factual and well-structured. Aim for completeness     while being efficient with words"
   embedding_model: "all-roberta-large-v1" # all-MiniLM-L6-v2 (6-layer, 384-dim), all-MiniLM-L12-v2 (12-layer, 768-dim), all-mpnet-base-v2 (12-layer, 768-dim), all-roberta-large-v1 (24-layer, 1024-dim)
   hpc: false
-  url: "http://127.0.0.1:8080/v1"
+  url: "http://127.0.0.1:1337/v1"
   temperature: 0.1
 
 # Logging
@@ -29,15 +29,16 @@ experiment:
   name: "Experiment 1"
 
   # Logging
-  run_id: '0002'
+  run_id: '0004'
 
   # Dataset configuration
   dataset_name: "quora"
+  dataset_split: "train"
   load_from_file: false
-  sample_size: 1000 # when using quora, sample_size is doubled due to question pairs
+  sample_size: ~ # use null/~ for no limit; when using quora, sample_size is doubled due to question pairs
   partial_questions: true
   range_min: 0
-  range_max: 2000
+  range_max: 20000
 
   # Cache configuration
   use_cache: true # This does not do anything currently

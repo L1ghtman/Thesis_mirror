@@ -35,6 +35,7 @@ class ExperimentConfig:
     name: str                       = ""
     run_id: str                     = ""
     dataset_name: str               = ""
+    dataset_split: str              = ""
     load_from_file: bool            = False
     sample_size: int                = 100
     partial_questions: bool         = True
