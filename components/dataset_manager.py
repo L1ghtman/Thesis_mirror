@@ -5,8 +5,9 @@ import os
 import json
 import random
 from typing import Dict, List, Tuple, Optional, Union, Any, Callable
-from datasets import load_dataset, Dataset
-from config_manager import get_config
+from datasets import get_dataset_split_names, load_dataset, Dataset
+
+from config_manager import get_config, load_config
 from components.helpers import get_info_level, info_print, debug_print
 
 class DatasetManager:
@@ -114,9 +115,12 @@ class DatasetManager:
         dataset_name = f"natural_questions_{split}"
         
         try:
-            # Load the dataset
-            ds = load_dataset("natural_questions", split=split, cache_dir=self.cache_dir)
-            
+            # Load the dataset with specific split to avoid loading entire dataset
+            ds = load_dataset("sentence-transformers/natural-questions", split=split, cache_dir=self.cache_dir, streaming=True)
+            ds = ds.take(max_samples)
+            ds = Dataset.from_generator(lambda: ds)
+
+           
             # Subsample if needed
             if max_samples and max_samples < len(ds):
                 ds = ds.select(range(max_samples))
@@ -342,9 +346,12 @@ class DatasetManager:
             # Find the question field
             question_field = self._guess_question_field(dataset)
             questions = [item[question_field] for item in dataset]
-            print(f"[DEBUG] questions type: {type(questions[0])}")
-            if type(questions[0]) == dict:
-                questions = [q['question'] for q in questions]
+            if questions and isinstance(questions[0], dict):
+                # Handle nested question structures (e.g., Natural Questions has {'text': ..., 'tokens': ...})
+                if 'text' in questions[0]:
+                    questions = [q['text'] for q in questions]
+                elif 'question' in questions[0]:
+                    questions = [q['question'] for q in questions]
         elif dataset_info["type"] == "qp":
             questions = []
             for item in dataset:
@@ -703,7 +710,13 @@ def create_default_manager():
 
 if __name__ == "__main__":
     # Example usage
+
+    pwd = os.getcwd()
+    print(f"[DEBUG] pwd: {pwd}")
+
+    load_config("/Users/lucalichterman/Documents/Uni/Semester09/INET_Thesis/llm-cache-optimize/configs/accelerate_llm.yaml")
     manager = create_default_manager()
+
     
     # Print available datasets
     print("\nAvailable datasets:")
@@ -715,3 +728,18 @@ if __name__ == "__main__":
     print("\nSample questions:")
     for q in questions:
         print(f"- {q}")
+
+    from datasets import get_dataset_split_names, load_dataset_builder
+
+    from datasets import load_dataset
+
+    ds = load_dataset("sentence-transformers/natural-questions")
+   
+    # Print available splits and their sizes
+    splits = get_dataset_split_names("sentence-transformers/natural_questions")
+    print("Available splits:", splits)
+
+    # Print the size of each split
+    for split in splits:
+        ds = load_dataset("natural_questions", split=split)
+        print(f"Split: {split}, Size: {len(ds)}")

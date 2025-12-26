@@ -4,6 +4,7 @@ import time
 import logging
 import numpy as np
 from datetime import datetime
+from dataclasses import asdict
 from typing import Dict, Any, Optional, List, Union
 from config_manager import get_config
 from components.helpers import format_time, get_info_level, info_print, debug_print
@@ -67,13 +68,22 @@ class LLMLogger:
         response_times.sort()
         median_llm_time = sum(response_times[(len(response_times)//2)-1:(len(response_times)//2)+1])/2
 
+        config_dict = {
+            "sys": asdict(self.config.sys),
+            "logging": asdict(self.config.logging),
+            "vector_store": asdict(self.config.vector_store),
+            "cache": asdict(self.config.cache),
+            "experiment": asdict(self.config.experiment),
+        }
+
         summary = {
             "run_id": self.current_run_id,
             "model": self.model,
             "total_requests": total_requests,
             "avg_llm_time": avg_llm_time,
             "median_llm_time": median_llm_time,
-            "total_time": total_time
+            "total_time": total_time,
+            "config:": config_dict
         }
 
         self.metrics["summary"] = summary
