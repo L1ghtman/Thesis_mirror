@@ -14,6 +14,7 @@ class localLlama(LLM):
     client: Any = None
     first_call: bool = True
     system_prompt: str = "You are a helpful AI assistant."
+    temperature: float = 0.1
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -52,8 +53,8 @@ class localLlama(LLM):
                     "content": prompt
                 }
             ],
-            max_tokens=1000,
-            temperature=self.temperature
+            max_tokens=10000,
+            temperature=self.temperature,
             top_p=1,
             frequency_penalty=0.0,
             presence_penalty=0.0,
