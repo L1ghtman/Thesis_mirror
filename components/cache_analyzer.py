@@ -1780,6 +1780,19 @@ class CachePerformanceAnalyzer:
 
         # Convert list of debug info dicts to DataFrame
         df = pd.DataFrame(lsh_debug_info)
+        
+        # Handle multi-layer bucket_counts: convert list to single value (sum or first layer)
+        if 'bucket_counts' in df.columns:
+            # Use sum of counts across layers as the bucket_count metric
+            df['bucket_count'] = df['bucket_counts'].apply(
+                lambda x: sum(x) if isinstance(x, list) else x
+            )
+        
+        # Handle multi-layer per_layer_densities: use average as primary density metric
+        if 'per_layer_densities' in df.columns and 'bucket_density' not in df.columns:
+            df['bucket_density'] = df['per_layer_densities'].apply(
+                lambda x: sum(x) / len(x) if isinstance(x, list) and len(x) > 0 else 0
+            )
 
         # Add cache hit information if available
         if "requests" in run_data and len(run_data["requests"]) == len(lsh_debug_info):
@@ -1796,9 +1809,9 @@ class CachePerformanceAnalyzer:
 
         # Ensure numeric columns are properly typed
         numeric_columns = ['temperature', 'bucket_density', 'neighbor_contribution', 
-                          'density', 'cache_factor', 'hamming_distance_from_last', 
+                          'density', 'hamming_distance_from_last', 
                           'bucket_age', 'bucket_count', 'bucket_reuse_rate', 
-                          'computation_time_ms']
+                          'computation_time_ms', 'lsh_layers']
 
         for col in numeric_columns:
             if col in df.columns:
@@ -1872,7 +1885,7 @@ class CachePerformanceAnalyzer:
 
         # Plot 1: Computation time analysis
         comp_times = lsh_df['computation_time_ms'].values
-        cache_factors = lsh_df['cache_factor'].values
+        #cache_factors = lsh_df['cache_factor'].values
 
         if 'cache_hit' in lsh_df.columns:
             # Convert cache_hit to boolean array, handling None/NaN values
@@ -1911,23 +1924,23 @@ class CachePerformanceAnalyzer:
         ax2.grid(True, alpha=0.3)
 
         # Plot 3: Cache factor effectiveness
-        if 'cache_hit' in lsh_df.columns:
-            # Use the cleaned cache_hits from above
-            cache_hit_numeric = hit_mask.astype(float)
-            ax3.scatter(cache_factors, cache_hit_numeric, alpha=0.5)
-
-            # Add trend line only if we have valid data
-            if len(cache_factors) > 1 and np.std(cache_factors) > 0:
-                z = np.polyfit(cache_factors, cache_hit_numeric, 1)
-                p = np.poly1d(z)
-                ax3.plot(sorted(cache_factors), p(sorted(cache_factors)), "r--", alpha=0.8)
-        else:
-            ax3.hist(cache_factors, bins=30, alpha=0.7)
-
-        ax3.set_xlabel('Cache Factor')
-        ax3.set_ylabel('Cache Hit (1) / Miss (0)')
-        ax3.set_title('Cache Factor vs Cache Decision')
-        ax3.grid(True, alpha=0.3)
+#        if 'cache_hit' in lsh_df.columns:
+#            # Use the cleaned cache_hits from above
+#            cache_hit_numeric = hit_mask.astype(float)
+#            ax3.scatter(cache_factors, cache_hit_numeric, alpha=0.5)
+#
+#            # Add trend line only if we have valid data
+#            if len(cache_factors) > 1 and np.std(cache_factors) > 0:
+#                z = np.polyfit(cache_factors, cache_hit_numeric, 1)
+#                p = np.poly1d(z)
+#                ax3.plot(sorted(cache_factors), p(sorted(cache_factors)), "r--", alpha=0.8)
+#        else:
+#            ax3.hist(cache_factors, bins=30, alpha=0.7)
+#
+#        ax3.set_xlabel('Cache Factor')
+#        ax3.set_ylabel('Cache Hit (1) / Miss (0)')
+#        ax3.set_title('Cache Factor vs Cache Decision')
+#        ax3.grid(True, alpha=0.3)
 
         # Plot 4: Hamming distance analysis
         hamming_dists = lsh_df['hamming_distance_from_last'].values
@@ -1995,18 +2008,23 @@ class CachePerformanceAnalyzer:
         
         # Plot 5: Bucket count distribution
         ax5 = plt.subplot(3, 2, 5)
-        bucket_counts = lsh_df['bucket_count'].values
-        ax5.hist(bucket_counts, bins=30, edgecolor='black', alpha=0.7, color='orange')
-        ax5.set_xlabel('Bucket Count')
+        if 'bucket_count' in lsh_df.columns:
+            bucket_counts = lsh_df['bucket_count'].values
+            ax5.hist(bucket_counts, bins=30, edgecolor='black', alpha=0.7, color='orange')
+            ax5.set_xlabel('Bucket Count (sum across layers)')
+        else:
+            ax5.text(0.5, 0.5, 'No bucket count data available',
+                    horizontalalignment='center', verticalalignment='center',
+                    transform=ax5.transAxes)
         ax5.set_ylabel('Frequency')
         ax5.set_title('LSH Bucket Visit Frequency')
         
         # Plot 6: Correlation heatmap
         ax6 = plt.subplot(3, 2, 6)
         
-        # Select numerical columns for correlation
+        # Select numerical columns for correlation (only include if present)
         corr_columns = ['temperature', 'bucket_density', 'neighbor_contribution', 
-                       'density', 'cache_factor', 'hamming_distance_from_last', 
+                       'density', 'hamming_distance_from_last', 
                        'bucket_age', 'bucket_count', 'bucket_reuse_rate']
         
         available_columns = [col for col in corr_columns if col in lsh_df.columns]
