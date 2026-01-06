@@ -5,19 +5,29 @@ import numpy as np
 from typing import Tuple, List, Dict, Any, Set
 from datetime import datetime
 from collections import defaultdict, deque
+from dataclasses import dataclass, asdict
 from config_manager import get_config
 from components.helpers import get_info_level, info_print, debug_print
 
+def get_layered_hyperplanes(lsh_layers, num_hyperplanes, embedding_dim):
+    layered_hyperplanes = []
+    for _ in range(lsh_layers):
+        hyperplanes = np.random.randn(num_hyperplanes, embedding_dim)
+        hyperplanes /= np.linalg.norm(hyperplanes, axis=1, keepdims=True)
+        layered_hyperplanes.append(hyperplanes)
+    return layered_hyperplanes
+
 class LSHEstimator:
-    def __init__(self, embedding_dim, num_hyperplanes, window_size):
+    def __init__(self, embedding_dim, num_hyperplanes, lsh_layers, window_size, config):
         # Original LSH components
+        self.config = config
         self.num_hyperplanes = num_hyperplanes
         self.hyperplanes = np.random.randn(num_hyperplanes, embedding_dim)
         self.hyperplanes /= np.linalg.norm(self.hyperplanes, axis=1, keepdims=True)
+        self.layered_hyperplanes = get_layered_hyperplanes(lsh_layers, num_hyperplanes, embedding_dim)
         self.bucket_counts = defaultdict(int)
         self.bucket_history = deque(maxlen=window_size)
         self.total_count = 0
-        self.config = get_config()
         self.bucket_density_factor = self.config.experiment.bucket_density_factor
         self.sensitivity = self.config.experiment.sensitivity
         self.decay_rate = self.config.experiment.decay_rate
@@ -58,7 +68,7 @@ class LSHEstimator:
         info_print(f"sensitivity:               {self.sensitivity}", INFO)
         info_print(f"decay_rate:                {self.decay_rate}", INFO)
         info_print('----------------------------------', INFO)
-        
+
     def get_lsh_bucket(self, embedding: np.ndarray) -> Tuple[str, float]:
         """Hash embedding to bucket using hyperplanes, return bucket and computation time"""
         start_time = time.time()
@@ -66,9 +76,21 @@ class LSHEstimator:
         binary = ''.join('1' if p > 0 else '0' for p in projections)
         computation_time = time.time() - start_time
         self.performance_metrics['bucket_assignment_times'].append(computation_time)
+        return binary, computation_time       
+
+    def get_layered_lsh_bucket(self, embedding: np.ndarray) -> Tuple[str, float]:
+        """Hash embedding to several buckets using layered hyperplanes, return buckets and computation time"""
+        start_time = time.time()
+        binaries = []
+        for layer in self.layered_hyperplanes:
+            projections = np.dot(layer, embedding)
+            binary = ''.join('1' if p > 0 else '0' for p in projections)
+            binaries.append(binary)
+        computation_time = time.time() - start_time
+        self.performance_metrics['bucket_assignment_times'].append(computation_time)
         return binary, computation_time
     
-    def estimate_density(self, embedding: np.ndarray) -> Tuple[float, dict]:
+    def estimate_density(self, embedding: np.ndarray, lsh_layers) -> Tuple[float, dict]:
         """
         Estimate topic density using LSH with comprehensive tracking
         Returns: (temperature, debug_info)
@@ -76,8 +98,11 @@ class LSHEstimator:
 
         timestamp = datetime.now()
         
-        # Get bucket
-        bucket, bucket_time = self.get_lsh_bucket(embedding)
+        # Get bucket(s)
+        if lsh_layers > 1:
+            layered_buckets = self.get_layered_lsh_bucket(embedding) #TODO: integrate layered LSH architecture
+        else:
+            bucket, bucket_time = self.get_lsh_bucket(embedding)
         
         # Track bucket sequence and transitions
         if self.bucket_history:
@@ -116,7 +141,8 @@ class LSHEstimator:
         self.tracking_data['bucket_temperatures'][bucket].append(temperature)
         self.tracking_data['bucket_densities'][bucket].append(density)
         
-        cache_factor = 3.141
+        #cache_factor = 3.141
+
         # Enhanced debug info
         debug_info = {
             "lsh_bucket": bucket,
@@ -125,7 +151,7 @@ class LSHEstimator:
             "neighbor_contribution": round(neighbor_contribution, 3),
             "density": round(density, 3),
             "temperature": round(temperature, 3),
-            "cache_factor": round(cache_factor, 3),
+            #"cache_factor": round(cache_factor, 3),
             "bucket_age": self._get_bucket_age(bucket),
             "total_unique_buckets": len(self.bucket_counts),
             "bucket_reuse_rate": self._calculate_bucket_reuse_rate(),
@@ -151,7 +177,7 @@ class LSHEstimator:
         
         relevant_count = main_count + neighbor_count * 0.5  # Neighbors weighted less
         
-        density = min(relevant_count / (self.total_count * 0.1), 1.0)
+        density = min(relevant_count / (self.total_count * 0.1), 1.0) # clamping density to stay between 1.0 and 0.0. The '*0.1' is used to configure the % of total items in a bucket and its neighbors to trigger maximum density output
         neighbor_contribution = (neighbor_count * 0.5) / max(relevant_count, 1)
         
         return density, neighbor_contribution
@@ -364,11 +390,14 @@ class LSHCache:
         self.dimension = self.config.vector_store.dimension
         self.use_LSH = self.config.experiment.use_LSH
         self.num_hyperplanes = self.config.experiment.num_hyperplanes
+        self.lsh_layers = self.config.experiment.layers
         self.window_size = self.config.experiment.window_size
 
         self.estimator = LSHEstimator(self.dimension,
                                       self.num_hyperplanes, 
+                                      self.lsh_layers,
                                       self.window_size,
+                                      self.config
                                     )
         self.last_debug_info = None  # Store last debug info
 
@@ -378,11 +407,12 @@ class LSHCache:
         info_print(f"use_LSH:                   {self.use_LSH}", INFO)
         info_print(f"embedding dimension:       {self.dimension}", INFO)
         info_print(f"num_hyperplanes:           {self.num_hyperplanes}", INFO)
+        info_print(f"lsh layers:                {self.lsh_layers}", INFO)
         info_print(f"window size:               {self.window_size}", INFO)
         info_print('----------------------------------', INFO)
     
     def estimate_temperature(self, embedding: np.ndarray) -> Tuple[float, dict]:
-        temperature, debug_info = self.estimator.estimate_density(embedding)
+        temperature, debug_info = self.estimator.estimate_density(embedding, self.lsh_layers)
         self.last_debug_info = debug_info  # Store for access
         return temperature, debug_info
     
