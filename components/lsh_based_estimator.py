@@ -22,12 +22,17 @@ class LSHEstimator:
         # Original LSH components
         self.config = config
         self.num_hyperplanes = num_hyperplanes
+        self.lsh_layers = lsh_layers
+        self.window_size = window_size
         self.hyperplanes = np.random.randn(num_hyperplanes, embedding_dim)
         self.hyperplanes /= np.linalg.norm(self.hyperplanes, axis=1, keepdims=True)
         self.layered_hyperplanes = get_layered_hyperplanes(lsh_layers, num_hyperplanes, embedding_dim)
-        self.bucket_counts = defaultdict(int)
-        self.bucket_history = deque(maxlen=window_size)
-        self.total_count = 0
+        
+        # Per-layer data structures
+        self.bucket_counts: List[Dict[str, int]] = [defaultdict(int) for _ in range(lsh_layers)]
+        self.bucket_history: List[deque] = [deque(maxlen=window_size) for _ in range(lsh_layers)]
+        
+        self.total_count = 0  # Global query count
         self.bucket_density_factor = self.config.experiment.bucket_density_factor
         self.sensitivity = self.config.experiment.sensitivity
         self.decay_rate = self.config.experiment.decay_rate
@@ -56,13 +61,13 @@ class LSHEstimator:
             'average_bucket_lifetime': 0,
         }
         
-        # Item-to-bucket tracking for eviction synchronization
-        self.item_to_bucket: Dict[int, str] = {}  # item_id → bucket_id
-        self.bucket_to_items: Dict[str, Set[int]] = defaultdict(set)  # bucket_id → {item_ids}
+        # Item-to-bucket tracking for eviction synchronization (multi-layer)
+        self.item_to_bucket: Dict[int, List[str]] = {}  # item_id → [bucket_id per layer]
+        self.bucket_to_items: List[Dict[str, Set[int]]] = [defaultdict(set) for _ in range(lsh_layers)]  # layer → bucket_id → {item_ids}
         self.active_item_count = 0  # Track items that haven't been evicted
         
-        # Cache last computed bucket to avoid redundant computation
-        self.last_bucket: str = None
+        # Cache last computed buckets to avoid redundant computation (multi-layer)
+        self.last_buckets: List[str] = None  # One bucket per layer
         self.last_bucket_embedding_hash: int = None  # To verify it's the same embedding
 
         INFO, DEBUG = get_info_level(self.config)
@@ -82,8 +87,8 @@ class LSHEstimator:
         self.performance_metrics['bucket_assignment_times'].append(computation_time)
         return binary, computation_time       
 
-    def get_layered_lsh_bucket(self, embedding: np.ndarray) -> Tuple[str, float]:
-        """Hash embedding to several buckets using layered hyperplanes, return buckets and computation time"""
+    def get_layered_lsh_bucket(self, embedding: np.ndarray) -> Tuple[List[str], float]:
+        """Hash embedding to several buckets using layered hyperplanes, return list of buckets and computation time"""
         start_time = time.time()
         binaries = []
         for layer in self.layered_hyperplanes:
@@ -92,47 +97,46 @@ class LSHEstimator:
             binaries.append(binary)
         computation_time = time.time() - start_time
         self.performance_metrics['bucket_assignment_times'].append(computation_time)
-        return binary, computation_time
+        return binaries, computation_time
     
     def estimate_density(self, embedding: np.ndarray, lsh_layers) -> Tuple[float, dict]:
         """
-        Estimate topic density using LSH with comprehensive tracking
+        Estimate topic density using multi-layer LSH with comprehensive tracking.
+        Computes density for each layer and averages them.
+        
         Returns: (temperature, debug_info)
         """
-
         timestamp = datetime.now()
         
-        # Get bucket(s)
-        if lsh_layers > 1:
-            layered_buckets = self.get_layered_lsh_bucket(embedding) #TODO: integrate layered LSH architecture
-        else:
-            bucket, bucket_time = self.get_lsh_bucket(embedding)
+        # Get buckets for all layers
+        buckets, bucket_time = self.get_layered_lsh_bucket(embedding)
         
-        # Cache the bucket for potential reuse in register_item()
-        self.last_bucket = bucket
+        # Cache the buckets for potential reuse in register_item()
+        self.last_buckets = buckets
         self.last_bucket_embedding_hash = hash(embedding.tobytes()) if hasattr(embedding, 'tobytes') else hash(tuple(embedding))
         
-        # Track bucket sequence and transitions
-        if self.bucket_history:
-            last_bucket = self.bucket_history[-1]
-            hamming_dist = sum(c1 != c2 for c1, c2 in zip(bucket, last_bucket))
+        # Track bucket sequence and transitions (using layer 0 as reference)
+        # TODO: evaluate if this is needed at all
+        if self.bucket_history[0]:
+            last_bucket = self.bucket_history[0][-1]
+            hamming_dist = sum(c1 != c2 for c1, c2 in zip(buckets[0], last_bucket))
             self.tracking_data['hamming_distances'].append(hamming_dist)
-            self.tracking_data['bucket_transitions'][last_bucket][bucket] += 1
+            self.tracking_data['bucket_transitions'][last_bucket][buckets[0]] += 1
         
-        # Calculate density with tracking
+        # Calculate density averaged across all layers
         start_density_time = time.time()
-        bucket_density, neighbor_contribution = self._calculate_bucket_density_with_tracking(bucket)
+        bucket_density, neighbor_contribution, per_layer_densities = self._calculate_bucket_density_layered(buckets)
         density_calc_time = time.time() - start_density_time
         self.performance_metrics['density_calculation_times'].append(density_calc_time)
         
         density = bucket_density * self.bucket_density_factor
         
-        # Update tracking before updating stats
-        self._track_bucket_access(bucket, density, timestamp, embedding)
+        # Update tracking before updating stats (using layer 0 bucket as primary for tracking)
+        self._track_bucket_access(buckets[0], density, timestamp, embedding)
         self.tracking_data['neighbor_contributions'].append(neighbor_contribution)
         
-        # Update stats
-        self._update_stats(bucket)
+        # Update stats for all layers
+        self._update_stats_all_layers(buckets)
 
         curve = self.config.experiment.curve
 
@@ -145,23 +149,26 @@ class LSHEstimator:
             decay_rate = self.config.experiment.decay_rate
             temperature = 2.0 / (1 + decay_rate * density)
         
-        # Track temperature for this bucket
-        self.tracking_data['bucket_temperatures'][bucket].append(temperature)
-        self.tracking_data['bucket_densities'][bucket].append(density)
-        
-        #cache_factor = 3.141
+        # Track temperature for primary bucket (layer 0)
+        self.tracking_data['bucket_temperatures'][buckets[0]].append(temperature)
+        self.tracking_data['bucket_densities'][buckets[0]].append(density)
 
-        # Enhanced debug info
+        # Count unique buckets across all layers
+        total_unique_buckets = sum(len(layer_counts) for layer_counts in self.bucket_counts)
+
+        # Enhanced debug info with multi-layer details
         debug_info = {
-            "lsh_bucket": bucket,
-            "bucket_count": self.bucket_counts[bucket],
-            "bucket_density": round(bucket_density, 3),
+            "lsh_buckets": buckets,  # List of bucket IDs per layer
+            "lsh_bucket": buckets[0],  # Primary bucket (layer 0) for backward compatibility
+            "bucket_counts": [self.bucket_counts[layer_idx][buckets[layer_idx]] for layer_idx in range(lsh_layers)],
+            "per_layer_densities": [round(d, 3) for d in per_layer_densities],
+            "bucket_density": round(bucket_density, 3),  # Averaged density
             "neighbor_contribution": round(neighbor_contribution, 3),
             "density": round(density, 3),
             "temperature": round(temperature, 3),
-            #"cache_factor": round(cache_factor, 3),
-            "bucket_age": self._get_bucket_age(bucket),
-            "total_unique_buckets": len(self.bucket_counts),
+            "bucket_age": self._get_bucket_age(buckets[0]),
+            "total_unique_buckets": total_unique_buckets,
+            "lsh_layers": lsh_layers,
             "bucket_reuse_rate": self._calculate_bucket_reuse_rate(),
             "hamming_distance_from_last": self.tracking_data['hamming_distances'][-1] if self.tracking_data['hamming_distances'] else 0,
             "computation_time_ms": round((bucket_time + density_calc_time) * 1000, 2)
@@ -169,19 +176,20 @@ class LSHEstimator:
         
         return temperature, debug_info
     
-    def _calculate_bucket_density_with_tracking(self, bucket: str) -> Tuple[float, float]:
-        """Calculate density for a bucket and its neighbors, returning both total density and neighbor contribution"""
+    def _calculate_bucket_density_for_layer(self, bucket: str, layer_idx: int) -> Tuple[float, float]:
+        """Calculate density for a bucket and its neighbors in a specific layer, returning both total density and neighbor contribution"""
         if self.total_count == 0:
             return 0.0, 0.0
-            
-        main_count = self.bucket_counts[bucket]
+        
+        layer_bucket_counts = self.bucket_counts[layer_idx]
+        main_count = layer_bucket_counts[bucket]
         
         neighbor_count = 0
         for i in range(len(bucket)):
             neighbor = list(bucket)
             neighbor[i] = '1' if bucket[i] == '0' else '0'
             neighbor_key = ''.join(neighbor)
-            neighbor_count += self.bucket_counts.get(neighbor_key, 0)
+            neighbor_count += layer_bucket_counts.get(neighbor_key, 0)
         
         relevant_count = main_count + neighbor_count * 0.5  # Neighbors weighted less
         
@@ -189,6 +197,32 @@ class LSHEstimator:
         neighbor_contribution = (neighbor_count * 0.5) / max(relevant_count, 1)
         
         return density, neighbor_contribution
+    
+    def _calculate_bucket_density_layered(self, buckets: List[str]) -> Tuple[float, float, List[float]]:
+        """
+        Calculate density averaged across all layers.
+        
+        Args:
+            buckets: List of bucket IDs, one per layer
+            
+        Returns:
+            (average_density, average_neighbor_contribution, per_layer_densities)
+        """
+        if self.total_count == 0:
+            return 0.0, 0.0, [0.0] * len(buckets)
+        
+        layer_densities = []
+        layer_neighbor_contributions = []
+        
+        for layer_idx, bucket in enumerate(buckets):
+            density, neighbor_contrib = self._calculate_bucket_density_for_layer(bucket, layer_idx)
+            layer_densities.append(density)
+            layer_neighbor_contributions.append(neighbor_contrib)
+        
+        avg_density = sum(layer_densities) / len(layer_densities)
+        avg_neighbor_contribution = sum(layer_neighbor_contributions) / len(layer_neighbor_contributions)
+        
+        return avg_density, avg_neighbor_contribution, layer_densities
     
     def _track_bucket_access(self, bucket: str, density: float, timestamp: datetime, embedding: np.ndarray):
         """Track comprehensive bucket access information"""
@@ -220,62 +254,73 @@ class LSHEstimator:
         return round(age, 2)
     
     def _calculate_bucket_reuse_rate(self) -> float:
-        """Calculate what percentage of queries reuse existing buckets"""
+        """Calculate what percentage of queries reuse existing buckets (averaged across layers)"""
         if self.total_count == 0:
             return 0.0
-        unique_buckets = len(self.bucket_counts)
-        reuse_rate = 1.0 - (unique_buckets / self.total_count)
+        # Count unique buckets across all layers
+        total_unique_buckets = sum(len(layer_counts) for layer_counts in self.bucket_counts)
+        avg_unique_per_layer = total_unique_buckets / self.lsh_layers
+        reuse_rate = 1.0 - (avg_unique_per_layer / self.total_count)
         return round(max(0.0, reuse_rate), 3)
     
-    def _update_stats(self, bucket: str):
-        """Update all statistics"""
-        self.bucket_history.append(bucket)
-        self.bucket_counts[bucket] += 1
+    def _update_stats_for_layer(self, bucket: str, layer_idx: int):
+        """Update statistics for a specific layer"""
+        self.bucket_history[layer_idx].append(bucket)
+        self.bucket_counts[layer_idx][bucket] += 1
+    
+    def _update_stats_all_layers(self, buckets: List[str]):
+        """Update statistics for all layers and increment total_count once"""
+        for layer_idx, bucket in enumerate(buckets):
+            self._update_stats_for_layer(bucket, layer_idx)
         self.total_count += 1
         
         # Update performance metrics
         self.performance_metrics['bucket_reuse_rate'] = self._calculate_bucket_reuse_rate()
     
-    def register_item(self, item_id: int, embedding: np.ndarray = None, bucket: str = None) -> str:
+    def register_item(self, item_id: int, embedding: np.ndarray = None, buckets: List[str] = None) -> List[str]:
         """
-        Register a cache item with its LSH bucket.
+        Register a cache item with its LSH buckets (one per layer).
         Called when a new item is added to the cache.
         
         Args:
             item_id: The unique ID of the cached item (from scalar storage)
-            embedding: The embedding vector for this item (optional if bucket is provided)
-            bucket: Pre-computed bucket ID (optional, avoids recomputation)
+            embedding: The embedding vector for this item (optional if buckets provided)
+            buckets: Pre-computed bucket IDs per layer (optional, avoids recomputation)
             
         Returns:
-            The bucket ID this item was assigned to
+            The list of bucket IDs this item was assigned to (one per layer)
         """
-        # Use provided bucket, or cached bucket, or compute it
-        if bucket is None:
+        # Use provided buckets, or cached buckets, or compute them
+        if buckets is None:
             if embedding is not None:
-                # Check if we can reuse the cached bucket
+                # Check if we can reuse the cached buckets
                 embedding_hash = hash(embedding.tobytes()) if hasattr(embedding, 'tobytes') else hash(tuple(embedding))
-                if self.last_bucket is not None and self.last_bucket_embedding_hash == embedding_hash:
-                    bucket = self.last_bucket
+                if self.last_buckets is not None and self.last_bucket_embedding_hash == embedding_hash:
+                    buckets = self.last_buckets
                 else:
-                    bucket, _ = self.get_lsh_bucket(embedding)
-            elif self.last_bucket is not None:
-                # Fall back to last cached bucket
-                bucket = self.last_bucket
+                    buckets, _ = self.get_layered_lsh_bucket(embedding)
+            elif self.last_buckets is not None:
+                # Fall back to last cached buckets
+                buckets = self.last_buckets
             else:
-                raise ValueError("Either embedding or bucket must be provided")
+                raise ValueError("Either embedding or buckets must be provided")
 
         print("Item registered!")
         
-        # Store bidirectional mapping
-        self.item_to_bucket[item_id] = bucket
-        self.bucket_to_items[bucket].add(item_id)
+        # Store item_id → list of buckets (one per layer)
+        self.item_to_bucket[item_id] = buckets
+        
+        # Add item to each layer's bucket_to_items mapping
+        for layer_idx, bucket in enumerate(buckets):
+            self.bucket_to_items[layer_idx][bucket].add(item_id)
+        
         self.active_item_count += 1
         
-        return bucket
+        return buckets
     
     def evict_item(self, item_id: int) -> bool:
         """
-        Handle eviction of a cache item - decrement bucket count.
+        Handle eviction of a cache item - decrement bucket counts in all layers.
         Called when an item is evicted from the cache.
         
         Args:
@@ -284,31 +329,33 @@ class LSHEstimator:
         Returns:
             True if item was found and evicted, False otherwise
         """
-        bucket = self.item_to_bucket.get(item_id)
+        buckets = self.item_to_bucket.get(item_id)
         
         print("evicting item")
 
-        if bucket is None:
+        if buckets is None:
             print("fail")
             # Item wasn't registered (might be from before LSH tracking)
             return False
         
-        # Decrement bucket count
-        if self.bucket_counts[bucket] > 0:
-            self.bucket_counts[bucket] -= 1
+        # Decrement bucket count in each layer
+        for layer_idx, bucket in enumerate(buckets):
+            if self.bucket_counts[layer_idx][bucket] > 0:
+                self.bucket_counts[layer_idx][bucket] -= 1
+            
+            # Remove from tracking structures
+            self.bucket_to_items[layer_idx][bucket].discard(item_id)
+            
+            # Clean up empty bucket sets
+            if len(self.bucket_to_items[layer_idx][bucket]) == 0:
+                del self.bucket_to_items[layer_idx][bucket]
         
-        # Update total count
+        # Update total count (once, not per layer)
         if self.total_count > 0:
             self.total_count -= 1
         
-        # Remove from tracking structures
-        self.bucket_to_items[bucket].discard(item_id)
         del self.item_to_bucket[item_id]
         self.active_item_count -= 1
-        
-        # Clean up empty bucket sets
-        if len(self.bucket_to_items[bucket]) == 0:
-            del self.bucket_to_items[bucket]
         
         print("success")
         return True
@@ -330,25 +377,40 @@ class LSHEstimator:
         return evicted_count
     
     def get_active_bucket_stats(self) -> Dict[str, Any]:
-        """Get statistics about active (non-evicted) items per bucket."""
+        """Get statistics about active (non-evicted) items per bucket (across all layers)."""
+        # Aggregate bucket stats across all layers
+        buckets_with_active_items = sum(len(layer_bucket_to_items) for layer_bucket_to_items in self.bucket_to_items)
+        items_per_bucket_per_layer = [
+            {b: len(items) for b, items in layer_bucket_to_items.items()}
+            for layer_bucket_to_items in self.bucket_to_items
+        ]
         return {
             'total_active_items': self.active_item_count,
             'total_tracked_items': len(self.item_to_bucket),
-            'buckets_with_active_items': len(self.bucket_to_items),
-            'items_per_bucket': {b: len(items) for b, items in self.bucket_to_items.items()},
+            'buckets_with_active_items': buckets_with_active_items,
+            'items_per_bucket_per_layer': items_per_bucket_per_layer,
         }
     
     def save_tracking_data(self, filepath: str):
         """Save tracking data to JSON file for analysis"""
+        # Aggregate bucket counts across all layers
+        all_bucket_counts = {}
+        for layer_idx, layer_counts in enumerate(self.bucket_counts):
+            for bucket, count in layer_counts.items():
+                all_bucket_counts[f"L{layer_idx}_{bucket}"] = count
+        
+        total_unique_buckets = sum(len(layer_counts) for layer_counts in self.bucket_counts)
+        
         export_data = {
             'configuration': {
                 'num_hyperplanes': self.num_hyperplanes,
                 'embedding_dim': len(self.hyperplanes[0]),
+                'lsh_layers': self.lsh_layers,
                 'total_queries': self.total_count,
-                'unique_buckets': len(self.bucket_counts),
+                'unique_buckets': total_unique_buckets,
             },
             'bucket_statistics': {
-                'bucket_counts': dict(self.bucket_counts),
+                'bucket_counts': all_bucket_counts,
                 'bucket_first_seen': {k: v.isoformat() for k, v in self.tracking_data['bucket_first_seen'].items()},
                 'bucket_last_seen': {k: v.isoformat() for k, v in self.tracking_data['bucket_last_seen'].items()},
             },
@@ -366,30 +428,48 @@ class LSHEstimator:
             json.dump(export_data, f, indent=2)
     
     def get_bucket_analytics(self) -> Dict[str, Any]:
-        """Get comprehensive analytics about bucket usage"""
-        if not self.bucket_counts:
+        """Get comprehensive analytics about bucket usage (aggregated across layers)"""
+        # Check if any layer has bucket counts
+        if not any(self.bucket_counts):
             return {}
         
-        bucket_access_counts = list(self.bucket_counts.values())
-        bucket_lifetimes = []
+        # Aggregate bucket access counts across all layers
+        all_bucket_access_counts = []
+        for layer_counts in self.bucket_counts:
+            all_bucket_access_counts.extend(layer_counts.values())
         
-        for bucket in self.bucket_counts:
+        if not all_bucket_access_counts:
+            return {}
+        
+        bucket_lifetimes = []
+        # Use tracking_data which tracks layer 0 buckets
+        for bucket in self.bucket_counts[0]:
             if bucket in self.tracking_data['bucket_first_seen'] and bucket in self.tracking_data['bucket_last_seen']:
                 lifetime = (self.tracking_data['bucket_last_seen'][bucket] - 
                            self.tracking_data['bucket_first_seen'][bucket]).total_seconds()
                 bucket_lifetimes.append(lifetime)
         
+        total_unique_buckets = sum(len(layer_counts) for layer_counts in self.bucket_counts)
+        
+        # Find most accessed buckets across all layers
+        all_buckets_with_layer = []
+        for layer_idx, layer_counts in enumerate(self.bucket_counts):
+            for bucket, count in layer_counts.items():
+                all_buckets_with_layer.append((f"L{layer_idx}_{bucket}", count))
+        most_accessed = sorted(all_buckets_with_layer, key=lambda x: x[1], reverse=True)[:10]
+        
         analytics = {
-            'total_buckets': len(self.bucket_counts),
+            'total_buckets': total_unique_buckets,
+            'lsh_layers': self.lsh_layers,
             'total_queries': self.total_count,
             'bucket_reuse_rate': self._calculate_bucket_reuse_rate(),
-            'most_accessed_buckets': sorted(self.bucket_counts.items(), key=lambda x: x[1], reverse=True)[:10],
+            'most_accessed_buckets': most_accessed,
             'access_distribution': {
-                'mean': np.mean(bucket_access_counts),
-                'median': np.median(bucket_access_counts),
-                'std': np.std(bucket_access_counts),
-                'max': max(bucket_access_counts),
-                'min': min(bucket_access_counts),
+                'mean': np.mean(all_bucket_access_counts),
+                'median': np.median(all_bucket_access_counts),
+                'std': np.std(all_bucket_access_counts),
+                'max': max(all_bucket_access_counts),
+                'min': min(all_bucket_access_counts),
             },
             'lifetime_stats': {
                 'mean_lifetime': np.mean(bucket_lifetimes) if bucket_lifetimes else 0,
@@ -445,16 +525,16 @@ class LSHCache:
         """Get the last debug info for logging"""
         return self.last_debug_info
     
-    def register_item(self, item_id: int, embedding: np.ndarray = None, bucket: str = None) -> str:
+    def register_item(self, item_id: int, embedding: np.ndarray = None, buckets: List[str] = None) -> List[str]:
         """
-        Register a cached item with its LSH bucket.
+        Register a cached item with its LSH buckets (one per layer).
         
         Args:
             item_id: The unique ID of the cached item
-            embedding: The embedding vector (optional if bucket provided or cached)
-            bucket: Pre-computed bucket ID from debug_info['lsh_bucket'] (optional)
+            embedding: The embedding vector (optional if buckets provided or cached)
+            buckets: Pre-computed bucket IDs from debug_info['lsh_buckets'] (optional)
         """
-        return self.estimator.register_item(item_id, embedding, bucket)
+        return self.estimator.register_item(item_id, embedding, buckets)
     
     def evict_item(self, item_id: int) -> bool:
         """Handle eviction of a single item."""
