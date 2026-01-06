@@ -140,16 +140,16 @@ def main():
         #use_cache = config.experiment['use_cache']
 
         try:
-            #for i, question in enumerate(selected_questions, start=1):
-            #    info_print(f'Processing question {i}/{len(selected_questions)}: {question}', INFO)
-            #    process_request(
-            #        question,
-            #        cached_llm,
-            #        semantic_cache,
-            #        CacheLogger,
-            #        #use_cache=use_cache,
-            #        INFO
-            #    )
+            for i, question in enumerate(selected_questions, start=1):
+                info_print(f'Processing question {i}/{len(selected_questions)}: {question}', INFO)
+                process_request(
+                    question,
+                    cached_llm,
+                    semantic_cache,
+                    CacheLogger,
+                    #use_cache=use_cache,
+                    INFO
+                )
             CacheLogger.close()
             report_path = cache_analyzer.generate_latest_run_report(log_dir="cache_logs")
             print(f'Performance report saved to: {report_path}')

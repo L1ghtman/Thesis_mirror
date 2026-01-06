@@ -51,6 +51,7 @@ experiment:
   use_LSH: true
   bucket_density_factor: 1.0
   num_hyperplanes: 16 # this defines the bucket size
+  layers: 3 # this defines how many layers to use for lsh
   window_size: 1000
   curve: "rational" # "exponential", "rational"
   sensitivity: 2.0

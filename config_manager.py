@@ -49,6 +49,7 @@ class ExperimentConfig:
     use_LSH: bool                   = False
     bucket_density_factor: float    = 1.0
     num_hyperplanes: int            = 8
+    layers: int                     = 1
     window_size: int                = 2000
     curve: str                      = "rational"
     sensitivity: float              = 2.0

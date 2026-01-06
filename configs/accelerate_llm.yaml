@@ -27,15 +27,16 @@ experiment:
   name: "Experiment 1"
 
   # Logging
-  run_id: '0004'
+  run_id: '0006'
 
   # Dataset configuration
-  dataset_name: "quora"
+  dataset_name: "ms_marco"
+  dataset_split: "train"
   load_from_file: false
-  sample_size: 1000 # when using quora, sample_size is doubled due to question pairs
+  sample_size: 10 # when using quora, sample_size is doubled due to question pairs
   partial_questions: true
   range_min: 0
-  range_max: 2000
+  range_max: 10
 
   # Cache configuration
   use_cache: true # This does not do anything currently
