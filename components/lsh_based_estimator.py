@@ -60,6 +60,10 @@ class LSHEstimator:
         self.item_to_bucket: Dict[int, str] = {}  # item_id → bucket_id
         self.bucket_to_items: Dict[str, Set[int]] = defaultdict(set)  # bucket_id → {item_ids}
         self.active_item_count = 0  # Track items that haven't been evicted
+        
+        # Cache last computed bucket to avoid redundant computation
+        self.last_bucket: str = None
+        self.last_bucket_embedding_hash: int = None  # To verify it's the same embedding
 
         INFO, DEBUG = get_info_level(self.config)
 
@@ -103,6 +107,10 @@ class LSHEstimator:
             layered_buckets = self.get_layered_lsh_bucket(embedding) #TODO: integrate layered LSH architecture
         else:
             bucket, bucket_time = self.get_lsh_bucket(embedding)
+        
+        # Cache the bucket for potential reuse in register_item()
+        self.last_bucket = bucket
+        self.last_bucket_embedding_hash = hash(embedding.tobytes()) if hasattr(embedding, 'tobytes') else hash(tuple(embedding))
         
         # Track bucket sequence and transitions
         if self.bucket_history:
@@ -228,20 +236,33 @@ class LSHEstimator:
         # Update performance metrics
         self.performance_metrics['bucket_reuse_rate'] = self._calculate_bucket_reuse_rate()
     
-    def register_item(self, item_id: int, embedding: np.ndarray) -> str:
+    def register_item(self, item_id: int, embedding: np.ndarray = None, bucket: str = None) -> str:
         """
         Register a cache item with its LSH bucket.
         Called when a new item is added to the cache.
         
         Args:
             item_id: The unique ID of the cached item (from scalar storage)
-            embedding: The embedding vector for this item
+            embedding: The embedding vector for this item (optional if bucket is provided)
+            bucket: Pre-computed bucket ID (optional, avoids recomputation)
             
         Returns:
             The bucket ID this item was assigned to
         """
-        # TODO try to fix this to avoid calculating buckets more than once
-        bucket, _ = self.get_lsh_bucket(embedding)
+        # Use provided bucket, or cached bucket, or compute it
+        if bucket is None:
+            if embedding is not None:
+                # Check if we can reuse the cached bucket
+                embedding_hash = hash(embedding.tobytes()) if hasattr(embedding, 'tobytes') else hash(tuple(embedding))
+                if self.last_bucket is not None and self.last_bucket_embedding_hash == embedding_hash:
+                    bucket = self.last_bucket
+                else:
+                    bucket, _ = self.get_lsh_bucket(embedding)
+            elif self.last_bucket is not None:
+                # Fall back to last cached bucket
+                bucket = self.last_bucket
+            else:
+                raise ValueError("Either embedding or bucket must be provided")
 
         print("Item registered!")
         
@@ -424,9 +445,16 @@ class LSHCache:
         """Get the last debug info for logging"""
         return self.last_debug_info
     
-    def register_item(self, item_id: int, embedding: np.ndarray) -> str:
-        """Register a cached item with its LSH bucket."""
-        return self.estimator.register_item(item_id, embedding)
+    def register_item(self, item_id: int, embedding: np.ndarray = None, bucket: str = None) -> str:
+        """
+        Register a cached item with its LSH bucket.
+        
+        Args:
+            item_id: The unique ID of the cached item
+            embedding: The embedding vector (optional if bucket provided or cached)
+            bucket: Pre-computed bucket ID from debug_info['lsh_bucket'] (optional)
+        """
+        return self.estimator.register_item(item_id, embedding, bucket)
     
     def evict_item(self, item_id: int) -> bool:
         """Handle eviction of a single item."""
