@@ -17,6 +17,9 @@ def get_layered_hyperplanes(lsh_layers, num_hyperplanes, embedding_dim):
         layered_hyperplanes.append(hyperplanes)
     return layered_hyperplanes
 
+def get_hamming_distance(a, b):
+    return sum(c1 != c2 for c1, c2 in zip(a, b))
+
 class LSHEstimator:
     def __init__(self, embedding_dim, num_hyperplanes, lsh_layers, window_size, config):
         # Original LSH components
@@ -119,7 +122,7 @@ class LSHEstimator:
         # TODO: evaluate if this is needed at all
         if self.bucket_history[0]:
             last_bucket = self.bucket_history[0][-1]
-            hamming_dist = sum(c1 != c2 for c1, c2 in zip(buckets[0], last_bucket))
+            hamming_dist = get_hamming_distance(buckets[0], last_bucket)
             self.tracking_data['hamming_distances'].append(hamming_dist)
             self.tracking_data['bucket_transitions'][last_bucket][buckets[0]] += 1
         
@@ -181,6 +184,11 @@ class LSHEstimator:
         if self.total_count == 0:
             return 0.0, 0.0
         
+        k = 10
+        
+        # search for k nearest neighbors and return average hamming distance
+        average_distance, closest_bucket, closest_distance = self._average_neighbor_distance(bucket, layer_idx, k)
+        
         layer_bucket_counts = self.bucket_counts[layer_idx]
         main_count = layer_bucket_counts[bucket]
         
@@ -223,6 +231,90 @@ class LSHEstimator:
         avg_neighbor_contribution = sum(layer_neighbor_contributions) / len(layer_neighbor_contributions)
         
         return avg_density, avg_neighbor_contribution, layer_densities
+    
+    def _get_neighbor_key(self, bucket, i):
+        neighbor = list(bucket)
+        neighbor[i] = '1' if bucket[i] == '0' else '0'
+        neighbor_key = ''.join(neighbor)
+        return neighbor_key
+    
+    def _get_neighbors(self, bucket):
+        neighbors = []
+        for i in range(len(bucket)):
+            neighbor = self._get_neighbor_key(bucket, i)
+            neighbors.append(neighbor)
+        return neighbors
+
+    # This is a modified breadth-first-search
+    def _get_k_nearest_neighbors_BFS(self, bucket, buckets, k):
+        q = deque()
+        k_nearest = []
+        # dict for tracking already seen buckets
+        seen_buckets = {}
+        # label root as explored
+        seen_buckets[bucket] = True
+        q.append(bucket)
+
+        while q and k > 0:
+            curr = q.popleft()
+            for n in self._get_neighbors(curr):
+                if k <= 0:
+                    break
+                if n not in seen_buckets:
+                    seen_buckets[n] = True
+                    if buckets.get(n, 0) > 0:
+                        k_nearest.append(n)
+                        k -= 1
+                    q.append(n)
+
+        return k_nearest
+
+#    def _get_k_nearest_neighbors(self, bucket, buckets, k, seen_buckets, k_nearest):
+#        for i in range(len(bucket)):
+#            neighbor_key = self._get_neighbor_key(bucket, i)
+#            neighbor_count = buckets.get(neighbor_key, 0)
+#            if neighbor_count > 0:
+#                k_nearest.append(neighbor_key)
+#                return k_nearest
+#            seen_buckets.append(neighbor_key)
+
+    def _average_neighbor_distance(self, bucket: str, layer_idx: int, k: int) -> Tuple[float, str, float]:
+        """Calculate the average distance d of the k nearest neighbors, returning both d and the nearest neighbor n"""
+        if self.total_count == 0:
+            return 0.0, "", 0.0
+
+        layer_bucket_counts = self.bucket_counts[layer_idx]
+
+        k_nearest = self._get_k_nearest_neighbors_BFS(bucket, layer_bucket_counts, k)
+
+        nearest_neighbors = dict([(n, get_hamming_distance(bucket, n)) for n in k_nearest])
+
+        if nearest_neighbors:
+            closest_bucket, closest_distance = min(nearest_neighbors.items(), key=lambda item: item[1])
+        else: 
+            closest_bucket, closest_distance = None, 0.0
+
+#        distances = []
+#        smallest = 0
+#        first = True
+#        for n in k_nearest:
+#            distance = get_hamming_distance(bucket, n)
+#            if first:
+#                smallest = distance
+#                nearest = n
+#                first = False
+#            if distance < smallest:
+#                smallest = distance
+#                nearest = n
+#            distances.append(distance)
+
+        if not k_nearest:
+            return 0.0, None, 0.0
+        
+        avg_distance = sum(nearest_neighbors.values()) / len(k_nearest)
+
+        return avg_distance, closest_bucket, closest_distance
+
     
     def _track_bucket_access(self, bucket: str, density: float, timestamp: datetime, embedding: np.ndarray):
         """Track comprehensive bucket access information"""
