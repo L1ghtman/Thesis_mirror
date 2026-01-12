@@ -54,6 +54,8 @@ class ExperimentConfig:
     curve: str                      = "rational"
     sensitivity: float              = 2.0
     decay_rate: float               = 5.0
+    knn_density: bool               = False
+    k: int                          = 10
 
 @dataclass
 class Config:

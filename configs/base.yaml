@@ -29,16 +29,16 @@ experiment:
   name: "Experiment 1"
 
   # Logging
-  run_id: '0004'
+  run_id: '0005'
 
   # Dataset configuration
   dataset_name: "quora"
   dataset_split: "train"
   load_from_file: false
-  sample_size: ~ # use null/~ for no limit; when using quora, sample_size is doubled due to question pairs
+  sample_size: 100 # use null/~ for no limit; when using quora, sample_size is doubled due to question pairs
   partial_questions: true
   range_min: 0
-  range_max: 20000
+  range_max: 200
 
   # Cache configuration
   use_cache: true # This does not do anything currently
@@ -51,8 +51,10 @@ experiment:
   use_LSH: true
   bucket_density_factor: 1.0
   num_hyperplanes: 16 # this defines the bucket size
-  layers: 3 # this defines how many layers to use for lsh
+  layers: 2 # this defines how many layers to use for lsh
   window_size: 1000
   curve: "rational" # "exponential", "rational"
   sensitivity: 2.0
   decay_rate: 5.0
+  knn_density: true
+  k: 10 # this defines how many nearest neighbors to search for
