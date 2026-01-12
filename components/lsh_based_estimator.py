@@ -39,6 +39,8 @@ class LSHEstimator:
         self.bucket_density_factor = self.config.experiment.bucket_density_factor
         self.sensitivity = self.config.experiment.sensitivity
         self.decay_rate = self.config.experiment.decay_rate
+        self.knn_density = self.config.experiment.knn_density
+        self.k = self.config.experiment.k
         
         # Enhanced tracking components
         self.tracking_data = {
@@ -184,11 +186,6 @@ class LSHEstimator:
         if self.total_count == 0:
             return 0.0, 0.0
         
-        k = 10
-        
-        # search for k nearest neighbors and return average hamming distance
-        average_distance, closest_bucket, closest_distance = self._average_neighbor_distance(bucket, layer_idx, k)
-        
         layer_bucket_counts = self.bucket_counts[layer_idx]
         main_count = layer_bucket_counts[bucket]
         
@@ -205,6 +202,37 @@ class LSHEstimator:
         neighbor_contribution = (neighbor_count * 0.5) / max(relevant_count, 1)
         
         return density, neighbor_contribution
+
+    def _calculate_knn_bucket_density_for_layer(self, bucket: str, layer_idx: int) -> Tuple[float, float]:
+        if self.total_count == 0:
+            return 0.0, 0.0
+
+        layer_bucket_counts = self.bucket_counts[layer_idx]
+        main_count = layer_bucket_counts[bucket]
+
+        k_nearest = self._get_k_nearest_neighbors_BFS(bucket, layer_bucket_counts, self.k)    
+
+        # these metrics are not needed but might be useful later on
+#        nearest_neighbors = dict([(n, get_hamming_distance(bucket, n)) for n in k_nearest])
+#        if nearest_neighbors:
+#            closest_bucket, closest_distance = min(nearest_neighbors.items(), key=lambda item: item[1])
+#        else: 
+#            closest_bucket, closest_distance = None, 0.0
+#        avg_distance = sum(nearest_neighbors.values()) / len(k_nearest)
+
+        weighted_neighbor_count = 0
+        for neighbor in k_nearest:
+            dist = get_hamming_distance(bucket, neighbor)
+            count = layer_bucket_counts.get(neighbor, 0)
+            weight = 1.0 / (dist+1)
+            weighted_neighbor_count += count * weight
+        
+        relevant_count = main_count + weighted_neighbor_count
+        density = min(relevant_count/(self.total_count*0.1), 1.0)
+        neighbor_contribution = weighted_neighbor_count/max(relevant_count, 1)
+        
+        return density, neighbor_contribution
+
     
     def _calculate_bucket_density_layered(self, buckets: List[str]) -> Tuple[float, float, List[float]]:
         """
@@ -223,7 +251,10 @@ class LSHEstimator:
         layer_neighbor_contributions = []
         
         for layer_idx, bucket in enumerate(buckets):
-            density, neighbor_contrib = self._calculate_bucket_density_for_layer(bucket, layer_idx)
+            if self.knn_density:
+                density, neighbor_contrib = self._calculate_knn_bucket_density_for_layer(bucket, layer_idx)
+            else:
+                density, neighbor_contrib = self._calculate_bucket_density_for_layer(bucket, layer_idx)
             layer_densities.append(density)
             layer_neighbor_contributions.append(neighbor_contrib)
         
@@ -269,44 +300,19 @@ class LSHEstimator:
 
         return k_nearest
 
-#    def _get_k_nearest_neighbors(self, bucket, buckets, k, seen_buckets, k_nearest):
-#        for i in range(len(bucket)):
-#            neighbor_key = self._get_neighbor_key(bucket, i)
-#            neighbor_count = buckets.get(neighbor_key, 0)
-#            if neighbor_count > 0:
-#                k_nearest.append(neighbor_key)
-#                return k_nearest
-#            seen_buckets.append(neighbor_key)
-
     def _average_neighbor_distance(self, bucket: str, layer_idx: int, k: int) -> Tuple[float, str, float]:
         """Calculate the average distance d of the k nearest neighbors, returning both d and the nearest neighbor n"""
         if self.total_count == 0:
             return 0.0, "", 0.0
 
         layer_bucket_counts = self.bucket_counts[layer_idx]
-
         k_nearest = self._get_k_nearest_neighbors_BFS(bucket, layer_bucket_counts, k)
-
         nearest_neighbors = dict([(n, get_hamming_distance(bucket, n)) for n in k_nearest])
 
         if nearest_neighbors:
             closest_bucket, closest_distance = min(nearest_neighbors.items(), key=lambda item: item[1])
         else: 
             closest_bucket, closest_distance = None, 0.0
-
-#        distances = []
-#        smallest = 0
-#        first = True
-#        for n in k_nearest:
-#            distance = get_hamming_distance(bucket, n)
-#            if first:
-#                smallest = distance
-#                nearest = n
-#                first = False
-#            if distance < smallest:
-#                smallest = distance
-#                nearest = n
-#            distances.append(distance)
 
         if not k_nearest:
             return 0.0, None, 0.0
@@ -421,6 +427,7 @@ class LSHEstimator:
         Returns:
             True if item was found and evicted, False otherwise
         """
+        # TODO: we need to make sure that self.bucket_count entries get removed once their value drops back to 0, otherwise they might skew neighborhood calculations
         buckets = self.item_to_bucket.get(item_id)
         
         print("evicting item")
