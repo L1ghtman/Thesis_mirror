@@ -29,6 +29,7 @@ class VectorStoreConfig:
 @dataclass
 class CacheConfig:
     CACHE_DIR: str
+    similarity_threshold: float
 
 @dataclass
 class ExperimentConfig:

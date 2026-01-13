@@ -12,6 +12,7 @@ parser.add_argument('--config', type=str, required=True, help='Path to the confi
 args = parser.parse_args()
 config = load_config(args.config)
 
+from gptcache import Config
 from gptcache.core import Cache
 from gptcache.processor.pre import get_prompt
 from gptcache.adapter.langchain_models import LangChainLLMs
@@ -127,6 +128,7 @@ def main():
         llm = custom_llm.localLlama()
         cached_llm = LangChainLLMs(llm=llm)
         semantic_cache = Cache()
+        cache_config = Config(config.cache.similarity_threshold)
 
         semantic_cache.init(
             embedding_func=custom_embedding_func,
@@ -135,6 +137,7 @@ def main():
             pre_embedding_func=get_prompt,
             lsh_cache=LSHCache,
             temperature_func=lsh_temperature_func,
+            config=cache_config,
         )
 
         #use_cache = config.experiment['use_cache']
