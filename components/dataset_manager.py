@@ -116,15 +116,18 @@ class DatasetManager:
         dataset_name = f"natural_questions_{split}"
         
         try:
-            # Load the dataset with specific split to avoid loading entire dataset
-            ds = load_dataset("sentence-transformers/natural-questions", split=split, cache_dir=self.cache_dir, streaming=True)
-            ds = ds.take(max_samples)
-            ds = Dataset.from_generator(lambda: ds)
-
-           
-            # Subsample if needed
-            if max_samples and max_samples < len(ds):
-                ds = ds.select(range(max_samples))
+            # Load the dataset with streaming to avoid downloading the entire dataset
+            ds_stream = load_dataset("sentence-transformers/natural-questions", split=split, cache_dir=self.cache_dir, streaming=True)
+            
+            # Collect samples into a list
+            samples = []
+            for i, sample in enumerate(ds_stream):
+                if max_samples is not None and i >= max_samples:
+                    break
+                samples.append(sample)
+            
+            # Convert list of dicts to Dataset
+            ds = Dataset.from_list(samples)
             
             # Store the dataset
             self.datasets[dataset_name] = {
@@ -138,6 +141,8 @@ class DatasetManager:
         
         except Exception as e:
             print(f"Error loading Natural Questions dataset: {e}")
+            import traceback
+            traceback.print_exc()  # Add this to see the full error
             return None
     
     def load_yahoo_answers(self, split: str = "train", max_samples: Optional[int] = 1000) -> str:
